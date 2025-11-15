@@ -7,7 +7,7 @@ elasticsearch==8.11.1
 sqlalchemy==2.0.23
 
 # AI/ML
-requests==2.31.0
+requests==2.32.4
 numpy==1.26.2
 
 # Utilities
