@@ -1,0 +1,7 @@
+{
+  "name": "rag_correct_only",
+  "use_classification": true,
+  "use_rag": true,
+  "rag_top_k": 3,
+  "include_incorrect_history": false
+}

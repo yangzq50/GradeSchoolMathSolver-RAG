@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 style="color: #667eea; margin-bottom: 30px;">User Details: {{ username }}</h2>
+
+<div style="background: #f0f4ff; padding: 30px; border-radius: 10px; margin-bottom: 30px;">
+    <h3 style="color: #667eea; margin-bottom: 20px;">Statistics</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+        <div style="background: white; padding: 20px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 2em; color: #667eea; font-weight: bold;">{{ stats.total_questions }}</div>
+            <div style="color: #666; margin-top: 5px;">Total Questions</div>
+        </div>
+        <div style="background: white; padding: 20px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 2em; color: #4caf50; font-weight: bold;">{{ stats.correct_answers }}</div>
+            <div style="color: #666; margin-top: 5px;">Correct Answers</div>
+        </div>
+        <div style="background: white; padding: 20px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 2em; color: #667eea; font-weight: bold;">{{ stats.overall_correctness }}%</div>
+            <div style="color: #666; margin-top: 5px;">Overall Score</div>
+        </div>
+        <div style="background: white; padding: 20px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 2em; color: #764ba2; font-weight: bold;">{{ stats.recent_100_score }}%</div>
+            <div style="color: #666; margin-top: 5px;">Recent 100 Score</div>
+        </div>
+    </div>
+</div>
+
+<h3 style="color: #667eea; margin-bottom: 20px;">Answer History</h3>
+
+{% if history %}
+<table>
+    <thead>
+        <tr>
+            <th>Date/Time</th>
+            <th>Question</th>
+            <th>Equation</th>
+            <th>Your Answer</th>
+            <th>Correct Answer</th>
+            <th>Result</th>
+            <th>Category</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for record in history %}
+        <tr>
+            <td>{{ record.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{{ record.question }}</td>
+            <td><code>{{ record.equation }}</code></td>
+            <td>{{ record.user_answer }}</td>
+            <td>{{ record.correct_answer }}</td>
+            <td>
+                {% if record.is_correct %}
+                <span style="color: #4caf50; font-weight: bold;">✓ Correct</span>
+                {% else %}
+                <span style="color: #f44336; font-weight: bold;">✗ Incorrect</span>
+                {% endif %}
+            </td>
+            <td>{{ record.category }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 10px;">
+    <p style="color: #666; font-size: 1.2em;">No answer history yet.</p>
+</div>
+{% endif %}
+
+<div style="margin-top: 30px; text-align: center;">
+    <a href="/users" class="button">Back to Users</a>
+    <a href="/exam" class="button" style="margin-left: 10px;">Take Exam</a>
+</div>
+{% endblock %}

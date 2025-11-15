@@ -1,0 +1,7 @@
+{
+  "name": "classifier_agent",
+  "use_classification": true,
+  "use_rag": false,
+  "rag_top_k": 5,
+  "include_incorrect_history": true
+}

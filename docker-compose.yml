@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # AI Model Service (Ollama)
+  ollama:
+    image: ollama/ollama
+    container_name: math-solver-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - math-solver-network
+
+  # Elasticsearch for Quiz History
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    container_name: math-solver-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+    networks:
+      - math-solver-network
+
+  # Web Application
+  web:
+    build: .
+    container_name: math-solver-web
+    ports:
+      - "5000:5000"
+    environment:
+      - AI_MODEL_URL=http://ollama:11434
+      - AI_MODEL_NAME=llama3.2
+      - ELASTICSEARCH_HOST=elasticsearch
+      - ELASTICSEARCH_PORT=9200
+      - DATABASE_PATH=/app/data/math_solver.db
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5000
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - ollama
+      - elasticsearch
+    restart: unless-stopped
+    networks:
+      - math-solver-network
+
+volumes:
+  ollama_data:
+  es_data:
+
+networks:
+  math-solver-network:
+    driver: bridge

@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 style="color: #667eea; margin-bottom: 30px;">AI Agents Management</h2>
+
+<div style="background: #f0f4ff; padding: 30px; border-radius: 10px; margin-bottom: 30px;">
+    <h3 style="color: #667eea; margin-bottom: 20px;">Available Agents</h3>
+    
+    {% if agents %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        {% for agent in agents %}
+        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.1);">
+            <h4 style="color: #667eea; margin-bottom: 15px;">{{ agent.name }}</h4>
+            <ul style="list-style: none; padding: 0;">
+                <li style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                    <strong>Classification:</strong> 
+                    {% if agent.use_classification %}
+                    <span style="color: #4caf50;">✓ Enabled</span>
+                    {% else %}
+                    <span style="color: #f44336;">✗ Disabled</span>
+                    {% endif %}
+                </li>
+                <li style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                    <strong>RAG:</strong> 
+                    {% if agent.use_rag %}
+                    <span style="color: #4caf50;">✓ Enabled</span>
+                    {% else %}
+                    <span style="color: #f44336;">✗ Disabled</span>
+                    {% endif %}
+                </li>
+                <li style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                    <strong>RAG Top-K:</strong> {{ agent.rag_top_k }}
+                </li>
+                <li style="padding: 8px 0;">
+                    <strong>Include Incorrect History:</strong> 
+                    {% if agent.include_incorrect_history %}
+                    <span style="color: #4caf50;">✓ Yes</span>
+                    {% else %}
+                    <span style="color: #f44336;">✗ No</span>
+                    {% endif %}
+                </li>
+            </ul>
+            <button onclick="testAgent('{{ agent.name }}')" class="button" style="width: 100%; margin-top: 15px;">
+                Test Agent
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="color: #666;">No agents configured. Default agents will be created on first run.</p>
+    {% endif %}
+</div>
+
+<div style="background: #f0f4ff; padding: 30px; border-radius: 10px;">
+    <h3 style="color: #667eea; margin-bottom: 20px;">Test Agent</h3>
+    <form id="testAgentForm">
+        <div class="form-group">
+            <label for="agent_name">Agent Name:</label>
+            <select id="agent_name" name="agent_name" required>
+                {% for agent in agents %}
+                <option value="{{ agent.name }}">{{ agent.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="test_username">Username (for RAG context):</label>
+            <input type="text" id="test_username" name="test_username" value="test_user" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="test_difficulty">Difficulty:</label>
+            <select id="test_difficulty" name="test_difficulty" required>
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="test_question_count">Number of Questions:</label>
+            <input type="number" id="test_question_count" name="test_question_count" min="1" max="10" value="3" required>
+        </div>
+        
+        <button type="submit" class="button">Run Test</button>
+    </form>
+</div>
+
+<div id="testResults" style="display: none; margin-top: 30px;">
+    <h3 style="color: #667eea; margin-bottom: 20px;">Test Results</h3>
+    <div id="testResultsContent"></div>
+</div>
+
+<div id="message"></div>
+
+<script>
+function testAgent(agentName) {
+    document.getElementById('agent_name').value = agentName;
+    document.getElementById('testAgentForm').scrollIntoView({ behavior: 'smooth' });
+}
+
+document.getElementById('testAgentForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const agentName = document.getElementById('agent_name').value;
+    const username = document.getElementById('test_username').value;
+    const difficulty = document.getElementById('test_difficulty').value;
+    const questionCount = parseInt(document.getElementById('test_question_count').value);
+    
+    const messageDiv = document.getElementById('message');
+    messageDiv.innerHTML = '<div style="text-align: center; padding: 20px; background: #f0f4ff; border-radius: 10px; margin-top: 20px;">Running agent test...</div>';
+    
+    try {
+        const response = await fetch('/api/exam/agent', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                agent_name: agentName,
+                username: username,
+                difficulty: difficulty,
+                question_count: questionCount
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            displayTestResults(data);
+            messageDiv.innerHTML = '';
+        } else {
+            messageDiv.innerHTML = `<div class="error">${data.error}</div>`;
+        }
+    } catch (error) {
+        messageDiv.innerHTML = '<div class="error">Error running agent test</div>';
+    }
+});
+
+function displayTestResults(data) {
+    let html = '<div style="background: #f0f4ff; padding: 30px; border-radius: 10px;">';
+    
+    // Summary
+    html += `
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h3 style="color: #667eea;">Agent: ${data.agent_name}</h3>
+            <h4 style="color: #666; margin-top: 10px;">Score: ${data.correct_answers}/${data.total_questions} (${data.score}%)</h4>
+        </div>
+    `;
+    
+    // Individual results
+    data.results.forEach((result, idx) => {
+        const bgColor = result.is_correct ? '#e8f5e9' : '#ffebee';
+        const borderColor = result.is_correct ? '#4caf50' : '#f44336';
+        
+        html += `
+            <div style="background: ${bgColor}; padding: 20px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid ${borderColor};">
+                <h4 style="color: #333; margin-bottom: 10px;">Question ${result.question_number}</h4>
+                <p style="margin-bottom: 8px;"><strong>Question:</strong> ${result.question}</p>
+                <p style="margin-bottom: 8px;"><strong>Equation:</strong> ${result.equation}</p>
+                <p style="margin-bottom: 8px;"><strong>Agent Answer:</strong> ${result.agent_answer}</p>
+                <p style="margin-bottom: 8px;"><strong>Correct Answer:</strong> ${result.correct_answer}</p>
+                <p style="margin-bottom: 8px;"><strong>Category:</strong> ${result.category}</p>
+                <p style="margin-bottom: 8px; color: ${borderColor}; font-weight: bold;">
+                    ${result.is_correct ? '✓ Correct' : '✗ Incorrect'}
+                </p>
+                ${result.reasoning ? `<p style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.5); border-radius: 5px;"><strong>Reasoning:</strong> ${result.reasoning}</p>` : ''}
+                <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                    <span style="margin-right: 15px;">Classification: ${result.used_classification ? '✓' : '✗'}</span>
+                    <span>RAG: ${result.used_rag ? '✓' : '✗'}</span>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    
+    document.getElementById('testResultsContent').innerHTML = html;
+    document.getElementById('testResults').style.display = 'block';
+    document.getElementById('testResults').scrollIntoView({ behavior: 'smooth' });
+}
+</script>
+{% endblock %}

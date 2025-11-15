@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 style="color: #667eea; margin-bottom: 30px;">Take an Exam</h2>
+
+<div style="background: #f0f4ff; padding: 30px; border-radius: 10px; margin-bottom: 30px;">
+    <h3 style="color: #667eea; margin-bottom: 20px;">Exam Settings</h3>
+    <form id="examForm">
+        <div class="form-group">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="difficulty">Difficulty:</label>
+            <select id="difficulty" name="difficulty" required>
+                {% for level in difficulty_levels %}
+                <option value="{{ level }}">{{ level.capitalize() }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="question_count">Number of Questions:</label>
+            <input type="number" id="question_count" name="question_count" min="1" max="20" value="5" required>
+        </div>
+        
+        <button type="submit" class="button">Generate Questions</button>
+    </form>
+</div>
+
+<div id="questionsContainer" style="display: none;">
+    <h3 style="color: #667eea; margin-bottom: 20px;">Answer the Questions</h3>
+    <div id="questionsList"></div>
+    <button id="submitAnswers" class="button" style="margin-top: 20px;">Submit Answers</button>
+</div>
+
+<div id="resultsContainer" style="display: none;">
+    <h3 style="color: #667eea; margin-bottom: 20px;">Exam Results</h3>
+    <div id="resultsContent"></div>
+</div>
+
+<div id="message"></div>
+
+<script>
+let currentQuestions = [];
+let currentUsername = '';
+
+document.getElementById('examForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    currentUsername = document.getElementById('username').value;
+    const difficulty = document.getElementById('difficulty').value;
+    const questionCount = parseInt(document.getElementById('question_count').value);
+    
+    const messageDiv = document.getElementById('message');
+    messageDiv.innerHTML = '<div style="text-align: center; padding: 20px;">Generating questions...</div>';
+    
+    try {
+        const response = await fetch('/api/exam/human', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: currentUsername,
+                difficulty: difficulty,
+                question_count: questionCount
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            currentQuestions = data.questions;
+            displayQuestions(data.questions);
+            messageDiv.innerHTML = '';
+        } else {
+            messageDiv.innerHTML = `<div class="error">${data.error}</div>`;
+        }
+    } catch (error) {
+        messageDiv.innerHTML = '<div class="error">Error generating questions</div>';
+    }
+});
+
+function displayQuestions(questions) {
+    const container = document.getElementById('questionsList');
+    let html = '';
+    
+    questions.forEach((q, idx) => {
+        html += `
+            <div style="background: white; padding: 20px; margin-bottom: 20px; border-radius: 10px; border-left: 4px solid #667eea;">
+                <h4 style="color: #667eea; margin-bottom: 10px;">Question ${idx + 1}</h4>
+                <p style="font-size: 1.1em; margin-bottom: 15px;">${q.question_text}</p>
+                <p style="color: #666; margin-bottom: 10px;"><strong>Equation:</strong> ${q.equation}</p>
+                <label for="answer_${idx}" style="display: block; margin-bottom: 5px;">Your Answer:</label>
+                <input type="number" step="any" id="answer_${idx}" class="answer-input" 
+                       style="width: 200px; padding: 8px; border: 2px solid #ddd; border-radius: 5px;" required>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+    document.getElementById('questionsContainer').style.display = 'block';
+    document.getElementById('resultsContainer').style.display = 'none';
+}
+
+document.getElementById('submitAnswers').addEventListener('click', async () => {
+    const answers = [];
+    let allAnswered = true;
+    
+    for (let i = 0; i < currentQuestions.length; i++) {
+        const input = document.getElementById(`answer_${i}`);
+        if (input.value === '') {
+            allAnswered = false;
+            break;
+        }
+        answers.push(parseFloat(input.value));
+    }
+    
+    if (!allAnswered) {
+        alert('Please answer all questions before submitting!');
+        return;
+    }
+    
+    // Process answers locally
+    let correctCount = 0;
+    let resultsHtml = '<div style="background: #f0f4ff; padding: 30px; border-radius: 10px; margin-bottom: 20px;">';
+    resultsHtml += `<div style="text-align: center; margin-bottom: 20px;">`;
+    
+    currentQuestions.forEach((q, idx) => {
+        const userAnswer = answers[idx];
+        const isCorrect = Math.abs(userAnswer - q.answer) < 0.01;
+        if (isCorrect) correctCount++;
+    });
+    
+    const score = (correctCount / currentQuestions.length) * 100;
+    resultsHtml += `<h3 style="color: #667eea;">Score: ${correctCount}/${currentQuestions.length} (${score.toFixed(2)}%)</h3>`;
+    resultsHtml += '</div>';
+    
+    currentQuestions.forEach((q, idx) => {
+        const userAnswer = answers[idx];
+        const isCorrect = Math.abs(userAnswer - q.answer) < 0.01;
+        const bgColor = isCorrect ? '#e8f5e9' : '#ffebee';
+        const borderColor = isCorrect ? '#4caf50' : '#f44336';
+        
+        resultsHtml += `
+            <div style="background: ${bgColor}; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid ${borderColor};">
+                <p><strong>Question ${idx + 1}:</strong> ${q.question_text}</p>
+                <p><strong>Equation:</strong> ${q.equation}</p>
+                <p><strong>Your Answer:</strong> ${userAnswer}</p>
+                <p><strong>Correct Answer:</strong> ${q.answer}</p>
+                <p style="color: ${borderColor}; font-weight: bold;">${isCorrect ? '✓ Correct' : '✗ Incorrect'}</p>
+            </div>
+        `;
+    });
+    
+    resultsHtml += '</div>';
+    resultsHtml += '<div style="text-align: center;"><a href="/exam" class="button">Take Another Exam</a> <a href="/users" class="button" style="margin-left: 10px;">View All Users</a></div>';
+    
+    document.getElementById('resultsContent').innerHTML = resultsHtml;
+    document.getElementById('resultsContainer').style.display = 'block';
+    document.getElementById('questionsContainer').style.display = 'none';
+});
+</script>
+{% endblock %}

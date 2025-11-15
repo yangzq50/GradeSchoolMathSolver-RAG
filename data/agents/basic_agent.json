@@ -1,0 +1,7 @@
+{
+  "name": "basic_agent",
+  "use_classification": false,
+  "use_rag": false,
+  "rag_top_k": 5,
+  "include_incorrect_history": true
+}

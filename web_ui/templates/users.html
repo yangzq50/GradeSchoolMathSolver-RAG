@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 style="color: #667eea; margin-bottom: 30px;">All Users</h2>
+
+{% if users %}
+<table>
+    <thead>
+        <tr>
+            <th>Username</th>
+            <th>Total Questions</th>
+            <th>Correct Answers</th>
+            <th>Overall Correctness</th>
+            <th>Recent 100 Score</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for user in users %}
+        <tr>
+            <td><strong>{{ user.username }}</strong></td>
+            <td>{{ user.total_questions }}</td>
+            <td>{{ user.correct_answers }}</td>
+            <td>{{ user.overall_correctness }}%</td>
+            <td>{{ user.recent_100_score }}%</td>
+            <td>
+                <a href="/user/{{ user.username }}" class="button" style="padding: 5px 15px; font-size: 14px;">View Details</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 10px;">
+    <p style="color: #666; font-size: 1.2em;">No users found. Start by taking an exam!</p>
+    <a href="/exam" class="button" style="margin-top: 20px;">Take Exam</a>
+</div>
+{% endif %}
+
+<div style="margin-top: 40px; padding: 30px; background: #f0f4ff; border-radius: 10px;">
+    <h3 style="color: #667eea; margin-bottom: 20px;">Add New User</h3>
+    <form id="createUserForm" style="max-width: 400px;">
+        <div class="form-group">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        <button type="submit" class="button">Create User</button>
+    </form>
+    <div id="message"></div>
+</div>
+
+<script>
+document.getElementById('createUserForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('username').value;
+    const messageDiv = document.getElementById('message');
+    
+    try {
+        const response = await fetch('/api/users', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            messageDiv.innerHTML = '<div class="success">User created successfully!</div>';
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            messageDiv.innerHTML = `<div class="error">${data.error}</div>`;
+        }
+    } catch (error) {
+        messageDiv.innerHTML = '<div class="error">Error creating user</div>';
+    }
+});
+</script>
+{% endblock %}
