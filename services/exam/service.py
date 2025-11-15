@@ -3,7 +3,7 @@ Exam Service
 Manages exams for users and agents
 """
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from models import Question, ExamRequest, QuizHistory
 from services.qa_generation import QAGenerationService
 from services.classification import ClassificationService
@@ -11,6 +11,7 @@ from services.account import AccountService
 from services.quiz_history import QuizHistoryService
 from services.agent import AgentService
 from services.agent_management import AgentManagementService
+from services.teacher import TeacherService
 
 
 class ExamService:
@@ -22,6 +23,7 @@ class ExamService:
         self.account_service = AccountService()
         self.quiz_history_service = QuizHistoryService()
         self.agent_management = AgentManagementService()
+        self.teacher_service = TeacherService()
     
     def create_exam(self, request: ExamRequest) -> List[Question]:
         """
@@ -46,24 +48,23 @@ class ExamService:
         
         return questions
     
-    def conduct_human_exam(self, request: ExamRequest, 
-                           answers: List[float]) -> Dict[str, Any]:
+    def process_human_exam(self, request: ExamRequest, 
+                          questions: List[Question],
+                          answers: List[float]) -> Dict[str, Any]:
         """
-        Conduct exam for a human user
+        Process exam results for a human user with pre-generated questions
         
         Args:
             request: ExamRequest
+            questions: List of Question objects (already generated)
             answers: List of user answers
             
         Returns:
-            Exam results
+            Exam results with teacher feedback
         """
         # Ensure user exists
         if not self.account_service.get_user(request.username):
             self.account_service.create_user(request.username)
-        
-        # Generate questions
-        questions = self.create_exam(request)
         
         # Process answers
         results = []
@@ -97,7 +98,17 @@ class ExamService:
             )
             self.quiz_history_service.add_history(quiz_history)
             
-            results.append({
+            # Generate teacher feedback for wrong answers
+            teacher_feedback = None
+            if not is_correct:
+                teacher_feedback = self.teacher_service.generate_feedback(
+                    equation=question.equation,
+                    question=question.question_text,
+                    correct_answer=question.answer,
+                    user_answer=user_answer
+                )
+            
+            result_item = {
                 'question_number': idx + 1,
                 'question': question.question_text,
                 'equation': question.equation,
@@ -105,7 +116,13 @@ class ExamService:
                 'correct_answer': question.answer,
                 'is_correct': is_correct,
                 'category': question.category
-            })
+            }
+            
+            # Add teacher feedback if available
+            if teacher_feedback:
+                result_item['teacher_feedback'] = teacher_feedback.model_dump()
+            
+            results.append(result_item)
         
         score = (correct_count / len(questions)) * 100 if questions else 0
         
@@ -118,6 +135,24 @@ class ExamService:
             'results': results,
             'timestamp': datetime.now().isoformat()
         }
+    
+    def conduct_human_exam(self, request: ExamRequest, 
+                           answers: List[float]) -> Dict[str, Any]:
+        """
+        Conduct exam for a human user
+        
+        Args:
+            request: ExamRequest
+            answers: List of user answers
+            
+        Returns:
+            Exam results
+        """
+        # Generate questions
+        questions = self.create_exam(request)
+        
+        # Process with the new method
+        return self.process_human_exam(request, questions, answers)
     
     def conduct_agent_exam(self, request: ExamRequest) -> Dict[str, Any]:
         """

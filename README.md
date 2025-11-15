@@ -13,10 +13,11 @@ An AI-powered Grade School Math Solver with RAG (Retrieval-Augmented Generation)
 - **Agent Management**: Create and test different AI agent configurations
 - **Performance Tracking**: Monitor correctness rates, recent performance, and trends
 - **🆕 Immersive Exams**: Synchronized exams where all participants answer the same questions with optional answer reveal strategies
+- **🆕 Teacher Service**: Optional educational feedback for wrong answers to help users learn from mistakes
 
 ## 🏗️ Architecture
 
-The system consists of 10 main components:
+The system consists of 11 main components:
 
 ### 0. AI Model Service
 - Deployed using Docker with Ollama running LLaMA 3.2
@@ -47,8 +48,9 @@ The system consists of 10 main components:
 - Coordinates question generation and answer evaluation
 - Supports both human and AI agent exams
 - Updates user statistics and quiz history
+- Integrates teacher service for human feedback
 
-### 6. Immersive Exam Service (NEW)
+### 6. Immersive Exam Service
 - Synchronized exam management for multiple participants
 - Pre-generates shared questions for all participants
 - Ordered participant registration (humans and AI agents)
@@ -56,20 +58,28 @@ The system consists of 10 main components:
 - Server-controlled question progression
 - Real-time status updates and results
 
-### 7. Web UI Service
+### 7. Teacher Service (NEW)
+- Provides educational feedback for incorrect answers
+- AI-based explanations with template fallback
+- Step-by-step guidance for correct solutions
+- Toggle-able via configuration
+- Only active for human users (not agents)
+
+### 8. Web UI Service
 - Flask-based web interface
 - User dashboard with statistics and trends
 - Interactive exam interface
 - Immersive exam creation and participation
 - Agent testing and management
+- Teacher feedback display
 
-### 8. AI Agent Service
+### 9. AI Agent Service
 - Configurable problem-solving agents
 - Optional question classification
 - Optional RAG from quiz history
 - Provides reasoning for answers
 
-### 9. Agent Management Service
+### 10. Agent Management Service
 - Create, update, and delete agent configurations
 - Pre-configured default agents
 - Test agents with different settings
@@ -140,8 +150,22 @@ If you prefer to run everything locally:
 4. Choose number of questions (1-20)
 5. Answer the generated questions
 6. Submit to see your results and statistics
+7. **NEW**: For any incorrect answers, you'll receive personalized teacher feedback explaining:
+   - Why your answer was wrong
+   - Step-by-step guidance to the correct solution
+   - Educational tips for that operation type
 
-### Creating an Immersive Exam (NEW)
+### Teacher Feedback Feature
+
+When you submit a wrong answer, the teacher service automatically provides:
+- **Clear explanation** of why the answer is incorrect
+- **Step-by-step guidance** on how to solve the problem correctly
+- **Educational tips** specific to the type of math operation
+- **Encouraging tone** to support learning
+
+This feature can be toggled on/off via the `TEACHER_SERVICE_ENABLED` configuration option.
+
+### Creating an Immersive Exam
 
 1. Navigate to the "Immersive Exam" page
 2. Set difficulty distribution (easy, medium, hard question counts)
@@ -274,11 +298,17 @@ python services/agent_management/service.py
 # Test Exam Service
 python services/exam/service.py
 
-# Test Immersive Exam Service (NEW)
+# Test Immersive Exam Service
 python services/immersive_exam/service.py
+
+# Test Teacher Service (NEW)
+python services/teacher/service.py
 
 # Run all basic tests
 python tests/test_basic.py
+
+# Run teacher service tests (NEW)
+python tests/test_teacher_service.py
 
 # Run immersive exam tests (NEW)
 python tests/test_immersive_exam.py
@@ -304,6 +334,25 @@ Key settings:
 - `AI_MODEL_NAME`: Name of the model to use (e.g., llama3.2)
 - `ELASTICSEARCH_HOST`: Elasticsearch hostname
 - `DATABASE_PATH`: Path to SQLite database
+- `TEACHER_SERVICE_ENABLED`: Enable/disable teacher feedback (default: True)
+
+### Teacher Service Configuration
+
+The teacher service can be enabled or disabled via environment variable:
+
+```bash
+# Enable teacher feedback (default)
+TEACHER_SERVICE_ENABLED=True
+
+# Disable teacher feedback
+TEACHER_SERVICE_ENABLED=False
+```
+
+When enabled, the service provides:
+- AI-generated explanations when AI model is available
+- Template-based fallback explanations when AI is unavailable
+- Feedback only for human users (not agents)
+- No performance impact on correct answers
 
 ## 📊 System Flow
 
@@ -328,7 +377,7 @@ User/Agent Request → Exam Service → QA Generation Service → Questions
 ```
 GradeSchoolMathSolver-RAG/
 ├── config.py                 # Configuration settings
-├── models.py                 # Data models (including immersive exam models)
+├── models.py                 # Data models (including teacher feedback)
 ├── requirements.txt          # Python dependencies
 ├── docker-compose.yml        # Docker setup
 ├── Dockerfile               # Web app container
@@ -339,19 +388,21 @@ GradeSchoolMathSolver-RAG/
 │   ├── account/           # User management
 │   ├── quiz_history/      # RAG history storage
 │   ├── exam/             # Exam management
-│   ├── immersive_exam/   # Immersive exam management (NEW)
+│   ├── immersive_exam/   # Immersive exam management
+│   ├── teacher/          # Teacher feedback service (NEW)
 │   ├── agent/            # AI agent logic
 │   └── agent_management/ # Agent configuration
 ├── web_ui/               # Flask web interface
 │   ├── app.py           # Web application
 │   └── templates/       # HTML templates
-│       ├── immersive_exam_create.html  # (NEW)
-│       ├── immersive_exam_live.html    # (NEW)
-│       └── immersive_exam_results.html # (NEW)
+│       ├── immersive_exam_create.html
+│       ├── immersive_exam_live.html
+│       └── immersive_exam_results.html
 ├── docs/                # Documentation
 └── tests/              # Test files
     ├── test_basic.py
-    └── test_immersive_exam.py  # (NEW)
+    ├── test_teacher_service.py     # (NEW)
+    └── test_immersive_exam.py
 ```
 
 ### Adding New Features

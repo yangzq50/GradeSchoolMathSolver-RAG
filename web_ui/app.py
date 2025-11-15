@@ -174,21 +174,37 @@ def api_submit_human_exam():
     data = request.json
     
     try:
+        # The frontend should send questions and answers together
+        username = data.get('username')
+        difficulty = data.get('difficulty')
+        questions_data = data.get('questions', [])
+        answers = data.get('answers', [])
+        
+        if not username or not questions_data or not answers:
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        if len(questions_data) != len(answers):
+            return jsonify({'error': 'Questions and answers count mismatch'}), 400
+        
+        # Reconstruct Question objects from the data
+        from models import Question
+        questions = [Question(**q) for q in questions_data]
+        
+        # Create exam request
         exam_request = ExamRequest(
-            username=data['username'],
-            difficulty=data['difficulty'],
-            question_count=len(data['answers'])
+            username=username,
+            difficulty=difficulty,
+            question_count=len(answers)
         )
         
-        # For submission, we need to recreate or pass questions
-        # This is a simplified version - in production, you'd store the exam session
-        results = {
-            'message': 'Answers recorded successfully'
-        }
+        # Process using the new process_human_exam method with pre-generated questions
+        results = exam_service.process_human_exam(exam_request, questions, answers)
         
         return jsonify(results)
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 400
 
 
