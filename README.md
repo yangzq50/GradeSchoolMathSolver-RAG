@@ -14,10 +14,11 @@ An AI-powered Grade School Math Solver with RAG (Retrieval-Augmented Generation)
 - **Performance Tracking**: Monitor correctness rates, recent performance, and trends
 - **🆕 Immersive Exams**: Synchronized exams where all participants answer the same questions with optional answer reveal strategies
 - **🆕 Teacher Service**: Optional educational feedback for wrong answers to help users learn from mistakes
+- **🆕 Mistake Review Service**: Review and re-attempt past incorrect answers in FIFO order to learn from mistakes
 
 ## 🏗️ Architecture
 
-The system consists of 11 main components:
+The system consists of 12 main components:
 
 ### 0. AI Model Service
 - Deployed using Docker with Ollama running LLaMA 3.2
@@ -38,6 +39,7 @@ The system consists of 11 main components:
 - SQLite database for user management
 - Tracks answer correctness history with timestamps
 - Calculates overall correctness and recent 100 questions score
+- Tracks reviewed status for mistake review feature
 
 ### 4. Quiz History Service
 - Elasticsearch integration for RAG capabilities
@@ -58,28 +60,36 @@ The system consists of 11 main components:
 - Server-controlled question progression
 - Real-time status updates and results
 
-### 7. Teacher Service (NEW)
+### 7. Teacher Service
 - Provides educational feedback for incorrect answers
 - AI-based explanations with template fallback
 - Step-by-step guidance for correct solutions
 - Toggle-able via configuration
 - Only active for human users (not agents)
 
-### 8. Web UI Service
+### 8. Mistake Review Service (NEW)
+- Allows users to review past incorrect answers
+- FIFO (First-In, First-Out) ordering of mistakes
+- Mark mistakes as reviewed to avoid repetition
+- Interactive retry with instant feedback
+- Real-time tracking of unreviewed mistake count
+
+### 9. Web UI Service
 - Flask-based web interface
 - User dashboard with statistics and trends
 - Interactive exam interface
 - Immersive exam creation and participation
 - Agent testing and management
 - Teacher feedback display
+- Mistake review interface
 
-### 9. AI Agent Service
+### 10. AI Agent Service
 - Configurable problem-solving agents
 - Optional question classification
 - Optional RAG from quiz history
 - Provides reasoning for answers
 
-### 10. Agent Management Service
+### 11. Agent Management Service
 - Create, update, and delete agent configurations
 - Pre-configured default agents
 - Test agents with different settings
@@ -164,6 +174,30 @@ When you submit a wrong answer, the teacher service automatically provides:
 - **Encouraging tone** to support learning
 
 This feature can be toggled on/off via the `TEACHER_SERVICE_ENABLED` configuration option.
+
+### Reviewing Your Mistakes (NEW)
+
+The mistake review feature allows you to learn from your past errors:
+
+1. Navigate to the "Review Mistakes" page
+2. Enter your username
+3. Click "Start Reviewing"
+4. See your unreviewed mistake count
+5. For each mistake, you'll see:
+   - The original question
+   - Your incorrect answer
+   - The correct answer
+   - Question category and date
+6. **Try Again**: Enter a new answer and click "Check Answer" to see if you got it right
+7. Click "→ Next Mistake" to mark the current mistake as reviewed and move to the next one
+8. Mistakes are shown in FIFO (First-In, First-Out) order - oldest mistakes first
+9. Once reviewed, mistakes won't appear in future review sessions
+
+**Benefits:**
+- Focused practice on areas where you struggled
+- Immediate feedback on retry attempts
+- Track your improvement over time
+- Never miss reviewing an important mistake
 
 ### Creating an Immersive Exam
 
@@ -270,6 +304,23 @@ curl -X POST http://localhost:5000/api/exam/immersive/{exam_id}/answer \
     "question_index": 0,
     "answer": 42
   }'
+
+# Get next mistake to review (NEW)
+curl http://localhost:5000/api/mistakes/next/john_doe
+
+# Get count of unreviewed mistakes (NEW)
+curl http://localhost:5000/api/mistakes/count/john_doe
+
+# Mark a mistake as reviewed (NEW)
+curl -X POST http://localhost:5000/api/mistakes/review \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "john_doe",
+    "mistake_id": 123
+  }'
+
+# Get all unreviewed mistakes (NEW)
+curl http://localhost:5000/api/mistakes/all/john_doe?limit=50
 ```
 
 ## 🧪 Testing
@@ -304,6 +355,9 @@ python services/immersive_exam/service.py
 # Test Teacher Service (NEW)
 python services/teacher/service.py
 
+# Test Mistake Review Service (NEW)
+python services/mistake_review/service.py
+
 # Run all basic tests
 python tests/test_basic.py
 
@@ -312,6 +366,9 @@ python tests/test_teacher_service.py
 
 # Run immersive exam tests (NEW)
 python tests/test_immersive_exam.py
+
+# Run mistake review tests (NEW)
+python tests/test_mistake_review.py
 ```
 
 ## 🔧 Configuration
@@ -377,7 +434,7 @@ User/Agent Request → Exam Service → QA Generation Service → Questions
 ```
 GradeSchoolMathSolver-RAG/
 ├── config.py                 # Configuration settings
-├── models.py                 # Data models (including teacher feedback)
+├── models.py                 # Data models (including mistake review)
 ├── requirements.txt          # Python dependencies
 ├── docker-compose.yml        # Docker setup
 ├── Dockerfile               # Web app container
@@ -389,7 +446,8 @@ GradeSchoolMathSolver-RAG/
 │   ├── quiz_history/      # RAG history storage
 │   ├── exam/             # Exam management
 │   ├── immersive_exam/   # Immersive exam management
-│   ├── teacher/          # Teacher feedback service (NEW)
+│   ├── teacher/          # Teacher feedback service
+│   ├── mistake_review/   # Mistake review service (NEW)
 │   ├── agent/            # AI agent logic
 │   └── agent_management/ # Agent configuration
 ├── web_ui/               # Flask web interface
@@ -397,12 +455,14 @@ GradeSchoolMathSolver-RAG/
 │   └── templates/       # HTML templates
 │       ├── immersive_exam_create.html
 │       ├── immersive_exam_live.html
-│       └── immersive_exam_results.html
+│       ├── immersive_exam_results.html
+│       └── mistake_review.html            # (NEW)
 ├── docs/                # Documentation
 └── tests/              # Test files
     ├── test_basic.py
-    ├── test_teacher_service.py     # (NEW)
-    └── test_immersive_exam.py
+    ├── test_teacher_service.py
+    ├── test_immersive_exam.py
+    └── test_mistake_review.py            # (NEW)
 ```
 
 ### Adding New Features
