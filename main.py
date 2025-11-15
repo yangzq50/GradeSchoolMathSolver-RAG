@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
 from sqlalchemy.orm import Session
+from contextlib import asynccontextmanager
 
 from database import init_db, get_db, MathProblem, Answer
 from problem_generator import ProblemGenerator
@@ -13,11 +14,22 @@ from llama_interface import LlamaInterface
 from rag_retrieval import RAGRetrieval
 from config import API_HOST, API_PORT
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize database and components on startup"""
+    init_db()
+    print("Database initialized")
+    # Note: LLaMA and RAG initialization is lazy to avoid startup delays
+    # They will initialize on first use
+    yield
+    # Cleanup code can go here if needed
+
 # Initialize FastAPI app
 app = FastAPI(
     title="GradeSchoolMathSolver-RAG API",
     description="AI-powered Grade School Math Solver with RAG",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Add CORS middleware
@@ -46,15 +58,9 @@ class AnswerSubmission(BaseModel):
 class HintRequest(BaseModel):
     problem_id: int
 
-# Initialize database on startup
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database and components on startup"""
-    init_db()
-    print("Database initialized")
-    
-    # Note: LLaMA and RAG initialization is lazy to avoid startup delays
-    # They will initialize on first use
+# Initialize components
+problem_generator = ProblemGenerator()
+llama_interface = LlamaInterface()
 
 @app.get("/")
 async def root():
