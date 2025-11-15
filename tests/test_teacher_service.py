@@ -4,14 +4,14 @@ Test suite for Teacher Service
 import sys
 sys.path.insert(0, '/home/runner/work/GradeSchoolMathSolver-RAG/GradeSchoolMathSolver-RAG')
 
-from services.teacher import TeacherService
-from config import Config
+from services.teacher import TeacherService  # noqa: E402
+from config import Config  # noqa: E402
 
 
 def test_teacher_service():
     """Test teacher service feedback generation"""
     service = TeacherService()
-    
+
     # Test with wrong answer
     feedback = service.generate_feedback(
         equation="5 + 3",
@@ -19,7 +19,7 @@ def test_teacher_service():
         correct_answer=8.0,
         user_answer=7.0
     )
-    
+
     if service.enabled:
         assert feedback is not None, "Feedback should be generated when service is enabled"
         assert feedback.equation == "5 + 3"
@@ -36,17 +36,17 @@ def test_teacher_service():
 def test_teacher_service_different_operations():
     """Test teacher service with different operation types"""
     service = TeacherService()
-    
+
     if not service.enabled:
         print("⏭️  Teacher Service: Skipping operation tests (service disabled)")
         return
-    
+
     test_cases = [
         ("10 - 4", "What is ten minus four?", 6.0, 5.0),
         ("6 * 7", "What is six times seven?", 42.0, 40.0),
         ("20 / 4", "What is twenty divided by four?", 5.0, 4.0),
     ]
-    
+
     for equation, question, correct, wrong in test_cases:
         feedback = service.generate_feedback(
             equation=equation,
@@ -54,11 +54,11 @@ def test_teacher_service_different_operations():
             correct_answer=correct,
             user_answer=wrong
         )
-        
+
         assert feedback is not None
         assert feedback.equation == equation
         assert len(feedback.explanation) > 0
-    
+
     print("✅ Teacher Service: Different operations tested successfully")
 
 
@@ -66,7 +66,7 @@ def test_teacher_service_config():
     """Test teacher service configuration"""
     config = Config()
     service = TeacherService()
-    
+
     assert hasattr(config, 'TEACHER_SERVICE_ENABLED'), "Config should have TEACHER_SERVICE_ENABLED"
     assert service.enabled == config.TEACHER_SERVICE_ENABLED
     print(f"✅ Teacher Service: Configuration test passed (enabled={service.enabled})")
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     print("=" * 60)
     print("Running Teacher Service Tests")
     print("=" * 60)
-    
+
     try:
         test_teacher_service_config()
         test_teacher_service()

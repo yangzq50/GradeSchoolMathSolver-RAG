@@ -10,11 +10,11 @@ from models import TeacherFeedback
 
 class TeacherService:
     """Service for generating educational feedback on wrong answers"""
-    
+
     def __init__(self):
         self.config = Config()
         self.enabled = self.config.TEACHER_SERVICE_ENABLED
-    
+
     def generate_feedback(
         self,
         equation: str,
@@ -24,34 +24,34 @@ class TeacherService:
     ) -> Optional[TeacherFeedback]:
         """
         Generate feedback for a wrong answer
-        
+
         Args:
             equation: The mathematical equation
             question: The question text
             correct_answer: The correct answer
             user_answer: The user's incorrect answer
-            
+
         Returns:
             TeacherFeedback object with explanation, or None if service is disabled
         """
         if not self.enabled:
             return None
-        
+
         # Try AI-based feedback first
         feedback_text = self._generate_ai_feedback(
             equation, question, correct_answer, user_answer
         )
-        
+
         # Fallback to template-based feedback if AI fails
         if not feedback_text:
             feedback_text = self._generate_template_feedback(
                 equation, question, correct_answer, user_answer
             )
-        
+
         # Parse feedback into structured parts
         explanation = feedback_text
         feedback_summary = f"Your answer of {user_answer} is incorrect. The correct answer is {correct_answer}."
-        
+
         return TeacherFeedback(
             equation=equation,
             question=question,
@@ -60,7 +60,7 @@ class TeacherService:
             feedback=feedback_summary,
             explanation=explanation
         )
-    
+
     def _generate_ai_feedback(
         self,
         equation: str,
@@ -70,7 +70,7 @@ class TeacherService:
     ) -> Optional[str]:
         """
         Generate feedback using AI model
-        
+
         Returns:
             Feedback text or None if AI unavailable
         """
@@ -84,10 +84,13 @@ Correct Answer: {correct_answer}
 
 Please provide:
 1. A brief explanation of why the student's answer is wrong
-2. Step-by-step guidance on how to solve the problem correctly
+2. Step-by-step guidance on how to solve the problem
+   correctly
 3. The correct solution process
 
-Keep your explanation clear, encouraging, and educational. Focus on helping the student understand the concept, not just giving them the answer."""
+Keep your explanation clear, encouraging, and educational.
+Focus on helping the student understand the concept, not just
+giving them the answer."""
 
             response = requests.post(
                 f"{self.config.AI_MODEL_URL}/api/generate",
@@ -98,16 +101,16 @@ Keep your explanation clear, encouraging, and educational. Focus on helping the 
                 },
                 timeout=30
             )
-            
+
             if response.status_code == 200:
                 result = response.json()
                 return result.get('response', '').strip()
-            
+
         except Exception as e:
             print(f"Error generating AI feedback: {e}")
-        
+
         return None
-    
+
     def _generate_template_feedback(
         self,
         equation: str,
@@ -117,16 +120,16 @@ Keep your explanation clear, encouraging, and educational. Focus on helping the 
     ) -> str:
         """
         Generate template-based feedback as fallback
-        
+
         Returns:
             Template-based feedback text
         """
         # Determine operation type from equation
         operation = self._identify_operation(equation)
-        
+
         # Calculate the difference between answers
         difference = abs(correct_answer - user_answer)
-        
+
         feedback = f"""Let me help you understand where you went wrong:
 
 **Your Answer:** {user_answer}
@@ -138,7 +141,7 @@ Keep your explanation clear, encouraging, and educational. Focus on helping the 
 The equation is: {equation}
 
 """
-        
+
         if operation == "addition":
             feedback += """When adding numbers:
 1. Line up the numbers by place value (ones, tens, hundreds)
@@ -176,18 +179,18 @@ The equation is: {equation}
 4. Finally addition and subtraction (left to right)
 
 """
-        
+
         feedback += f"""**To get the correct answer of {correct_answer}:**
 Work through the equation step by step, following the rules above. Double-check your calculations at each step!
 
 Keep practicing, and you'll master this! 💪"""
-        
+
         return feedback
-    
+
     def _identify_operation(self, equation: str) -> str:
         """
         Identify the primary operation in the equation
-        
+
         Returns:
             Operation type string
         """
@@ -208,7 +211,7 @@ Keep practicing, and you'll master this! 💪"""
 if __name__ == "__main__":
     # Test the service
     service = TeacherService()
-    
+
     # Test cases
     test_cases = [
         {
@@ -230,30 +233,30 @@ if __name__ == "__main__":
             "user_answer": 20.0
         }
     ]
-    
+
     print("=" * 60)
     print("Teacher Service Test")
     print("=" * 60)
     print(f"Service Enabled: {service.enabled}\n")
-    
+
     for idx, test in enumerate(test_cases, 1):
         print(f"\nTest Case {idx}:")
         print(f"Question: {test['question']}")
         print(f"Equation: {test['equation']}")
         print(f"User Answer: {test['user_answer']}")
         print(f"Correct Answer: {test['correct_answer']}")
-        
+
         feedback = service.generate_feedback(
-            equation=test['equation'],
-            question=test['question'],
-            correct_answer=test['correct_answer'],
-            user_answer=test['user_answer']
+            equation=str(test['equation']),
+            question=str(test['question']),
+            correct_answer=float(test['correct_answer']),  # type: ignore[arg-type]
+            user_answer=float(test['user_answer'])  # type: ignore[arg-type]
         )
-        
+
         if feedback:
             print(f"\nFeedback Summary: {feedback.feedback}")
             print(f"\nExplanation:\n{feedback.explanation}")
         else:
             print("Teacher service is disabled")
-        
+
         print("-" * 60)

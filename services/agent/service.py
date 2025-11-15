@@ -3,7 +3,7 @@ AI Agent Service
 AI agent that can solve math problems with optional RAG and classification
 """
 import requests
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from config import Config
 from models import AgentConfig, Question
 from services.classification import ClassificationService
@@ -12,21 +12,21 @@ from services.quiz_history import QuizHistoryService
 
 class AgentService:
     """AI Agent for solving math problems"""
-    
+
     def __init__(self, config: AgentConfig):
         self.config = config
         self.app_config = Config()
         self.classification_service = ClassificationService()
         self.quiz_history_service = QuizHistoryService()
-    
+
     def solve_question(self, username: str, question: Question) -> Dict[str, Any]:
         """
         Solve a math question using the configured agent strategy
-        
+
         Args:
             username: Username for RAG context
             question: Question to solve
-            
+
         Returns:
             Dictionary with answer and metadata
         """
@@ -42,47 +42,48 @@ class AgentService:
             'category': None,
             'relevant_history': []
         }
-        
+
         # Step 1: Classify question if enabled
         if self.config.use_classification:
             category = self.classification_service.classify_question(question.equation)
             result['category'] = category
             result['used_classification'] = True
-        
+
         # Step 2: Retrieve relevant history if RAG is enabled
         if self.config.use_rag and self.quiz_history_service.is_connected():
+            category_value = result.get('category')
             history = self.quiz_history_service.search_relevant_history(
                 username=username,
                 question=question.question_text,
-                category=result.get('category'),
+                category=str(category_value) if category_value else None,
                 top_k=self.config.rag_top_k
             )
-            
+
             if history:
                 result['relevant_history'] = history
                 result['used_rag'] = True
-        
+
         # Step 3: Generate answer using AI model
         answer, reasoning = self._generate_answer(question, result)
         result['agent_answer'] = answer
         result['reasoning'] = reasoning
-        
+
         return result
-    
+
     def _generate_answer(self, question: Question, context: Dict[str, Any]) -> tuple[float, str]:
         """
         Generate answer using AI model
-        
+
         Args:
             question: Question object
             context: Context from classification and RAG
-            
+
         Returns:
             Tuple of (answer, reasoning)
         """
         # Build prompt based on context
         prompt = self._build_prompt(question, context)
-        
+
         try:
             response = requests.post(
                 f"{self.app_config.AI_MODEL_URL}/api/generate",
@@ -93,30 +94,30 @@ class AgentService:
                 },
                 timeout=30
             )
-            
+
             if response.status_code == 200:
                 result = response.json()
                 response_text = result.get('response', '').strip()
-                
+
                 # Parse answer and reasoning
                 answer, reasoning = self._parse_response(response_text, question.answer)
                 return answer, reasoning
             else:
                 # Fallback: calculate directly
                 return question.answer, "Direct calculation (AI unavailable)"
-                
+
         except Exception as e:
             print(f"Error generating answer with AI: {e}")
             return question.answer, f"Direct calculation (Error: {str(e)})"
-    
+
     def _build_prompt(self, question: Question, context: Dict[str, Any]) -> str:
         """Build prompt for AI model"""
         prompt = f"Solve this math problem:\n\n{question.question_text}\n\nEquation: {question.equation}\n\n"
-        
+
         # Add category context
         if context.get('used_classification'):
             prompt += f"This is a {context['category']} problem.\n\n"
-        
+
         # Add RAG context
         if context.get('used_rag') and context.get('relevant_history'):
             prompt += "Here are some similar problems you've seen before:\n"
@@ -124,27 +125,27 @@ class AgentService:
                 status = "correctly" if hist['is_correct'] else "incorrectly"
                 prompt += f"{idx}. {hist['question']} (answered {status})\n"
             prompt += "\n"
-        
+
         prompt += """Provide your answer in the following format:
 ANSWER: [numerical answer]
 REASONING: [brief explanation of how you solved it]"""
-        
+
         return prompt
-    
+
     def _parse_response(self, response_text: str, fallback_answer: float) -> tuple[float, str]:
         """
         Parse AI response to extract answer and reasoning
-        
+
         Args:
             response_text: AI response text
             fallback_answer: Fallback answer if parsing fails
-            
+
         Returns:
             Tuple of (answer, reasoning)
         """
         answer = fallback_answer
         reasoning = response_text
-        
+
         lines = response_text.split('\n')
         for line in lines:
             line = line.strip()
@@ -156,27 +157,27 @@ REASONING: [brief explanation of how you solved it]"""
                     numbers = re.findall(r'-?\d+\.?\d*', answer_str)
                     if numbers:
                         answer = float(numbers[0])
-                except:
+                except Exception:
                     pass
             elif line.startswith('REASONING:'):
                 reasoning = line.replace('REASONING:', '').strip()
-        
+
         return answer, reasoning
 
 
 if __name__ == "__main__":
     # Test the agent
     from models import Question
-    
+
     # Create agent with basic config
     agent_config = AgentConfig(
         name="basic_agent",
         use_classification=False,
         use_rag=False
     )
-    
+
     agent = AgentService(agent_config)
-    
+
     # Test question
     test_question = Question(
         equation="5 + 3",
@@ -184,7 +185,7 @@ if __name__ == "__main__":
         answer=8.0,
         difficulty="easy"
     )
-    
+
     result = agent.solve_question("test_user", test_question)
     print(f"Agent: {result['agent_name']}")
     print(f"Question: {result['question']}")
