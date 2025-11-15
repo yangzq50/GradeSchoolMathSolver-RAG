@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Immersive Exam Results - GradeSchoolMathSolver-RAG{% endblock %}
+
+{% block content %}
+<div style="max-width: 1000px; margin: 0 auto;">
+    <h2 style="color: #667eea; margin-bottom: 20px;">📊 Immersive Exam Results</h2>
+    
+    <div id="loading" style="text-align: center; padding: 40px;">
+        <p style="font-size: 18px; color: #666;">Loading results...</p>
+    </div>
+    
+    <div id="resultsContent" style="display: none;">
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+            <h3 style="color: #667eea; margin-bottom: 15px;">Exam Summary</h3>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: center;">
+                <div>
+                    <div style="font-size: 14px; color: #666;">Exam ID</div>
+                    <div style="font-size: 16px; font-weight: bold; color: #333; word-break: break-all;" id="exam_id_display">-</div>
+                </div>
+                <div>
+                    <div style="font-size: 14px; color: #666;">Total Questions</div>
+                    <div style="font-size: 24px; font-weight: bold; color: #667eea;" id="total_questions_display">-</div>
+                </div>
+                <div>
+                    <div style="font-size: 14px; color: #666;">Participants</div>
+                    <div style="font-size: 24px; font-weight: bold; color: #4caf50;" id="participants_count_display">-</div>
+                </div>
+            </div>
+        </div>
+        
+        <h3 style="color: #667eea; margin: 30px 0 20px 0;">🏆 Leaderboard</h3>
+        <div id="leaderboard"></div>
+        
+        <h3 style="color: #667eea; margin: 30px 0 20px 0;">📋 Detailed Results</h3>
+        <div id="detailed_results"></div>
+        
+        <div style="margin-top: 30px; text-align: center;">
+            <a href="/immersive" class="button" style="padding: 15px 40px;">Create Another Exam</a>
+            <a href="/" class="button" style="padding: 15px 40px; margin-left: 10px; background: #999;">Back to Home</a>
+        </div>
+    </div>
+</div>
+
+<script>
+const examId = '{{ exam_id }}';
+
+async function loadResults() {
+    try {
+        const response = await fetch(`/api/exam/immersive/${examId}/results`);
+        const results = await response.json();
+        
+        if (response.ok) {
+            displayResults(results);
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('resultsContent').style.display = 'block';
+        } else {
+            document.getElementById('loading').innerHTML = 
+                `<div class="error">Error loading results: ${results.error}</div>`;
+        }
+    } catch (error) {
+        document.getElementById('loading').innerHTML = 
+            `<div class="error">Failed to load results: ${error}</div>`;
+    }
+}
+
+function displayResults(results) {
+    // Update summary
+    document.getElementById('exam_id_display').textContent = results.exam_id.substring(0, 8) + '...';
+    document.getElementById('total_questions_display').textContent = results.total_questions;
+    document.getElementById('participants_count_display').textContent = results.participants.length;
+    
+    // Display leaderboard
+    const leaderboard = results.participants.map((p, idx) => {
+        const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
+        const typeIcon = p.participant_type === 'human' ? '👤' : '🤖';
+        
+        return `
+            <div style="background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="font-size: 24px;">${medal}</div>
+                    <div>
+                        <div style="font-size: 18px; font-weight: bold;">${typeIcon} ${p.participant_id}</div>
+                        <div style="color: #666; font-size: 14px;">Order: ${p.order + 1}</div>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 28px; font-weight: bold; color: #667eea;">${p.score_percentage}%</div>
+                    <div style="color: #666; font-size: 14px;">${p.total_score} / ${results.total_questions} correct</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    document.getElementById('leaderboard').innerHTML = leaderboard;
+    
+    // Display detailed results per participant
+    const detailedResults = results.participants.map(p => {
+        const answersTable = p.answers.map((answer, idx) => {
+            const isCorrect = p.scores[idx];
+            const statusIcon = isCorrect ? '✅' : '❌';
+            const statusColor = isCorrect ? '#4caf50' : '#f44336';
+            
+            return `
+                <tr>
+                    <td style="text-align: center;">${idx + 1}</td>
+                    <td style="text-align: center; font-weight: bold;">${answer !== null ? answer : '-'}</td>
+                    <td style="text-align: center;">
+                        <span style="color: ${statusColor}; font-size: 20px;">${statusIcon}</span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        
+        const typeIcon = p.participant_type === 'human' ? '👤' : '🤖';
+        
+        return `
+            <div style="background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                <h4 style="color: #667eea; margin-bottom: 15px;">${typeIcon} ${p.participant_id}</h4>
+                <div style="margin-bottom: 15px;">
+                    <strong>Order:</strong> ${p.order + 1} | 
+                    <strong>Score:</strong> ${p.total_score} / ${results.total_questions} (${p.score_percentage}%)
+                </div>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f8f9fa;">
+                            <th style="padding: 10px; border: 1px solid #ddd;">Question</th>
+                            <th style="padding: 10px; border: 1px solid #ddd;">Answer</th>
+                            <th style="padding: 10px; border: 1px solid #ddd;">Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${answersTable}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }).join('');
+    
+    document.getElementById('detailed_results').innerHTML = detailedResults;
+}
+
+// Load results on page load
+loadResults();
+</script>
+{% endblock %}

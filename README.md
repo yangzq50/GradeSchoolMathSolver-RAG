@@ -12,10 +12,11 @@ An AI-powered Grade School Math Solver with RAG (Retrieval-Augmented Generation)
 - **Web Interface**: User-friendly Flask-based web UI for taking exams and viewing statistics
 - **Agent Management**: Create and test different AI agent configurations
 - **Performance Tracking**: Monitor correctness rates, recent performance, and trends
+- **🆕 Immersive Exams**: Synchronized exams where all participants answer the same questions with optional answer reveal strategies
 
 ## 🏗️ Architecture
 
-The system consists of 9 main components:
+The system consists of 10 main components:
 
 ### 0. AI Model Service
 - Deployed using Docker with Ollama running LLaMA 3.2
@@ -47,19 +48,28 @@ The system consists of 9 main components:
 - Supports both human and AI agent exams
 - Updates user statistics and quiz history
 
-### 6. Web UI Service
+### 6. Immersive Exam Service (NEW)
+- Synchronized exam management for multiple participants
+- Pre-generates shared questions for all participants
+- Ordered participant registration (humans and AI agents)
+- Configurable reveal strategies for cheating experiments
+- Server-controlled question progression
+- Real-time status updates and results
+
+### 7. Web UI Service
 - Flask-based web interface
 - User dashboard with statistics and trends
 - Interactive exam interface
+- Immersive exam creation and participation
 - Agent testing and management
 
-### 7. AI Agent Service
+### 8. AI Agent Service
 - Configurable problem-solving agents
 - Optional question classification
 - Optional RAG from quiz history
 - Provides reasoning for answers
 
-### 8. Agent Management Service
+### 9. Agent Management Service
 - Create, update, and delete agent configurations
 - Pre-configured default agents
 - Test agents with different settings
@@ -131,6 +141,24 @@ If you prefer to run everything locally:
 5. Answer the generated questions
 6. Submit to see your results and statistics
 
+### Creating an Immersive Exam (NEW)
+
+1. Navigate to the "Immersive Exam" page
+2. Set difficulty distribution (easy, medium, hard question counts)
+3. Choose a reveal strategy:
+   - **None**: No participant sees others' answers
+   - **Reveal to Later Participants**: Participants see answers from those before them (for cheating experiments)
+   - **Reveal All After Round**: Everyone sees all answers after each question completes
+4. Optionally set time per question
+5. Click "Create Exam"
+6. Register participants:
+   - Add human users by username
+   - Add AI agents from the dropdown
+7. Click "Start Exam" when all participants are registered
+8. Participants join using their username/agent name
+9. Answer questions in synchronized order
+10. View final results with leaderboard
+
 ### Testing an AI Agent
 
 1. Navigate to the "Agents" page
@@ -189,6 +217,35 @@ curl -X POST http://localhost:5000/api/exam/agent \
     "difficulty": "hard",
     "question_count": 3
   }'
+
+# Create immersive exam (NEW)
+curl -X POST http://localhost:5000/api/exam/immersive/create \
+  -H "Content-Type: application/json" \
+  -d '{
+    "difficulty_distribution": {"easy": 3, "medium": 4, "hard": 3},
+    "reveal_strategy": "reveal_to_later_participants",
+    "time_per_question": 60
+  }'
+
+# Register participant for immersive exam
+curl -X POST http://localhost:5000/api/exam/immersive/{exam_id}/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "participant_id": "alice",
+    "participant_type": "human"
+  }'
+
+# Get immersive exam status
+curl http://localhost:5000/api/exam/immersive/{exam_id}/status?participant_id=alice
+
+# Submit answer in immersive exam
+curl -X POST http://localhost:5000/api/exam/immersive/{exam_id}/answer \
+  -H "Content-Type: application/json" \
+  -d '{
+    "participant_id": "alice",
+    "question_index": 0,
+    "answer": 42
+  }'
 ```
 
 ## 🧪 Testing
@@ -216,6 +273,15 @@ python services/agent_management/service.py
 
 # Test Exam Service
 python services/exam/service.py
+
+# Test Immersive Exam Service (NEW)
+python services/immersive_exam/service.py
+
+# Run all basic tests
+python tests/test_basic.py
+
+# Run immersive exam tests (NEW)
+python tests/test_immersive_exam.py
 ```
 
 ## 🔧 Configuration
@@ -262,7 +328,7 @@ User/Agent Request → Exam Service → QA Generation Service → Questions
 ```
 GradeSchoolMathSolver-RAG/
 ├── config.py                 # Configuration settings
-├── models.py                 # Data models
+├── models.py                 # Data models (including immersive exam models)
 ├── requirements.txt          # Python dependencies
 ├── docker-compose.yml        # Docker setup
 ├── Dockerfile               # Web app container
@@ -273,13 +339,19 @@ GradeSchoolMathSolver-RAG/
 │   ├── account/           # User management
 │   ├── quiz_history/      # RAG history storage
 │   ├── exam/             # Exam management
+│   ├── immersive_exam/   # Immersive exam management (NEW)
 │   ├── agent/            # AI agent logic
 │   └── agent_management/ # Agent configuration
 ├── web_ui/               # Flask web interface
 │   ├── app.py           # Web application
 │   └── templates/       # HTML templates
+│       ├── immersive_exam_create.html  # (NEW)
+│       ├── immersive_exam_live.html    # (NEW)
+│       └── immersive_exam_results.html # (NEW)
 ├── docs/                # Documentation
 └── tests/              # Test files
+    ├── test_basic.py
+    └── test_immersive_exam.py  # (NEW)
 ```
 
 ### Adding New Features

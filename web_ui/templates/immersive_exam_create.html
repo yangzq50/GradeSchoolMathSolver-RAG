@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Create Immersive Exam - GradeSchoolMathSolver-RAG{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+    <h2 style="color: #667eea; margin-bottom: 20px;">🎯 Create Immersive Exam</h2>
+    <p style="color: #666; margin-bottom: 30px;">
+        Create a synchronized exam where all participants answer the same questions in order.
+    </p>
+    
+    <div id="createForm">
+        <div class="form-group">
+            <label>Difficulty Distribution</label>
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight: normal;">Easy Questions</label>
+                    <input type="number" id="easy_count" min="0" max="20" value="3" style="margin-top: 5px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight: normal;">Medium Questions</label>
+                    <input type="number" id="medium_count" min="0" max="20" value="4" style="margin-top: 5px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight: normal;">Hard Questions</label>
+                    <input type="number" id="hard_count" min="0" max="20" value="3" style="margin-top: 5px;">
+                </div>
+                <div style="margin-top: 10px; color: #666;">
+                    Total: <strong><span id="total_questions">10</span> questions</strong>
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Reveal Strategy</label>
+            <select id="reveal_strategy">
+                <option value="none">None - No one sees others' answers</option>
+                <option value="reveal_to_later_participants">Show answers to later participants (cheating experiment)</option>
+                <option value="reveal_all_after_round">Show all answers after everyone completes each question</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Time Per Question (seconds, optional)</label>
+            <input type="number" id="time_per_question" min="10" max="300" placeholder="No time limit">
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <button onclick="createExam()" class="button" style="font-size: 18px; padding: 15px 40px;">
+                Create Exam
+            </button>
+        </div>
+    </div>
+    
+    <div id="examCreated" style="display: none; margin-top: 30px;">
+        <div class="success" style="margin-bottom: 20px;">
+            <h3 style="margin-bottom: 10px;">✅ Exam Created Successfully!</h3>
+            <p style="margin-bottom: 10px;">Exam ID: <strong><span id="exam_id"></span></strong></p>
+            <p>Total Questions: <strong><span id="created_total"></span></strong></p>
+        </div>
+        
+        <h3 style="color: #667eea; margin: 30px 0 20px 0;">Register Participants</h3>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+            <h4 style="margin-bottom: 15px;">Human Participants</h4>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input type="text" id="human_username" placeholder="Enter username" style="flex: 1;">
+                <button onclick="registerParticipant('human')" class="button">Add Human</button>
+            </div>
+            
+            <h4 style="margin: 20px 0 15px 0;">AI Agent Participants</h4>
+            <div style="display: flex; gap: 10px;">
+                <select id="agent_name" style="flex: 1;">
+                    {% for agent in agents %}
+                    <option value="{{ agent }}">{{ agent }}</option>
+                    {% endfor %}
+                </select>
+                <button onclick="registerParticipant('agent')" class="button">Add Agent</button>
+            </div>
+        </div>
+        
+        <div id="participants_list" style="margin-bottom: 20px;">
+            <h4>Registered Participants:</h4>
+            <ul id="participants" style="list-style: none; padding: 0;">
+                <li style="color: #999; font-style: italic;">No participants yet</li>
+            </ul>
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <button onclick="startExam()" class="button" style="font-size: 18px; padding: 15px 40px; background: #4caf50;">
+                Start Exam
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentExamId = null;
+let participants = [];
+
+// Update total questions display
+function updateTotal() {
+    const easy = parseInt(document.getElementById('easy_count').value) || 0;
+    const medium = parseInt(document.getElementById('medium_count').value) || 0;
+    const hard = parseInt(document.getElementById('hard_count').value) || 0;
+    document.getElementById('total_questions').textContent = easy + medium + hard;
+}
+
+document.getElementById('easy_count').addEventListener('input', updateTotal);
+document.getElementById('medium_count').addEventListener('input', updateTotal);
+document.getElementById('hard_count').addEventListener('input', updateTotal);
+
+async function createExam() {
+    const easyCount = parseInt(document.getElementById('easy_count').value) || 0;
+    const mediumCount = parseInt(document.getElementById('medium_count').value) || 0;
+    const hardCount = parseInt(document.getElementById('hard_count').value) || 0;
+    
+    if (easyCount + mediumCount + hardCount === 0) {
+        alert('Please add at least one question');
+        return;
+    }
+    
+    const difficultyDistribution = {};
+    if (easyCount > 0) difficultyDistribution.easy = easyCount;
+    if (mediumCount > 0) difficultyDistribution.medium = mediumCount;
+    if (hardCount > 0) difficultyDistribution.hard = hardCount;
+    
+    const timePerQuestion = document.getElementById('time_per_question').value;
+    
+    const data = {
+        difficulty_distribution: difficultyDistribution,
+        reveal_strategy: document.getElementById('reveal_strategy').value,
+        time_per_question: timePerQuestion ? parseInt(timePerQuestion) : null
+    };
+    
+    try {
+        const response = await fetch('/api/exam/immersive/create', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            currentExamId = result.exam_id;
+            document.getElementById('exam_id').textContent = result.exam_id;
+            document.getElementById('created_total').textContent = result.total_questions;
+            document.getElementById('createForm').style.display = 'none';
+            document.getElementById('examCreated').style.display = 'block';
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Failed to create exam: ' + error);
+    }
+}
+
+async function registerParticipant(type) {
+    if (!currentExamId) return;
+    
+    let participantId;
+    if (type === 'human') {
+        participantId = document.getElementById('human_username').value.trim();
+        if (!participantId) {
+            alert('Please enter a username');
+            return;
+        }
+    } else {
+        participantId = document.getElementById('agent_name').value;
+    }
+    
+    try {
+        const response = await fetch(`/api/exam/immersive/${currentExamId}/register`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                participant_id: participantId,
+                participant_type: type
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            participants.push({id: participantId, type: type});
+            updateParticipantsList();
+            
+            if (type === 'human') {
+                document.getElementById('human_username').value = '';
+            }
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Failed to register participant: ' + error);
+    }
+}
+
+function updateParticipantsList() {
+    const list = document.getElementById('participants');
+    if (participants.length === 0) {
+        list.innerHTML = '<li style="color: #999; font-style: italic;">No participants yet</li>';
+    } else {
+        list.innerHTML = participants.map((p, idx) => 
+            `<li style="padding: 8px; background: #fff; margin: 5px 0; border-radius: 5px; border-left: 4px solid #667eea;">
+                <strong>${idx + 1}.</strong> ${p.id} 
+                <span style="color: #999;">(${p.type})</span>
+            </li>`
+        ).join('');
+    }
+}
+
+async function startExam() {
+    if (!currentExamId) return;
+    
+    if (participants.length === 0) {
+        alert('Please register at least one participant');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/exam/immersive/${currentExamId}/start`, {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            // Redirect to exam page
+            window.location.href = `/immersive/${currentExamId}`;
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Failed to start exam: ' + error);
+    }
+}
+</script>
+{% endblock %}

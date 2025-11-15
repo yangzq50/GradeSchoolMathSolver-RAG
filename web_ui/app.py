@@ -5,10 +5,14 @@ Flask-based web interface for the GradeSchoolMathSolver-RAG system
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_cors import CORS
 from config import Config
-from models import ExamRequest, AgentConfig
+from models import (
+    ExamRequest, AgentConfig, ImmersiveExamConfig, 
+    ImmersiveExamAnswer, ParticipantType, RevealStrategy
+)
 from services.account import AccountService
 from services.exam import ExamService
 from services.agent_management import AgentManagementService
+from services.immersive_exam import ImmersiveExamService
 
 
 app = Flask(__name__, template_folder='templates')
@@ -18,6 +22,7 @@ config = Config()
 account_service = AccountService()
 exam_service = ExamService()
 agent_management = AgentManagementService()
+immersive_exam_service = ImmersiveExamService()
 
 # Create default agents on startup
 agent_management.create_default_agents()
@@ -83,6 +88,27 @@ def agents_page():
             agents.append(agent_config)
     
     return render_template('agents.html', agents=agents)
+
+
+@app.route('/immersive')
+def immersive_exam_page():
+    """Immersive exam creation page"""
+    agent_names = agent_management.list_agents()
+    return render_template('immersive_exam_create.html', 
+                          difficulty_levels=config.DIFFICULTY_LEVELS,
+                          agents=agent_names)
+
+
+@app.route('/immersive/<exam_id>')
+def immersive_exam_live(exam_id):
+    """Live immersive exam page"""
+    return render_template('immersive_exam_live.html', exam_id=exam_id)
+
+
+@app.route('/immersive/<exam_id>/results')
+def immersive_exam_results(exam_id):
+    """Immersive exam results page"""
+    return render_template('immersive_exam_results.html', exam_id=exam_id)
 
 
 # API Routes
@@ -214,6 +240,192 @@ def api_create_agent():
         else:
             return jsonify({'error': 'Agent already exists'}), 409
             
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+# Immersive Exam API Routes
+
+@app.route('/api/exam/immersive/create', methods=['POST'])
+def api_create_immersive_exam():
+    """API: Create an immersive exam"""
+    data = request.json
+    
+    try:
+        # Parse difficulty distribution
+        difficulty_distribution = data.get('difficulty_distribution', {})
+        reveal_strategy = data.get('reveal_strategy', 'none')
+        time_per_question = data.get('time_per_question')
+        
+        config = ImmersiveExamConfig(
+            difficulty_distribution=difficulty_distribution,
+            reveal_strategy=RevealStrategy(reveal_strategy),
+            time_per_question=time_per_question
+        )
+        
+        exam = immersive_exam_service.create_immersive_exam(config)
+        
+        return jsonify({
+            'exam_id': exam.exam_id,
+            'total_questions': len(exam.questions),
+            'status': exam.status,
+            'message': 'Immersive exam created successfully'
+        }), 201
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+@app.route('/api/exam/immersive/<exam_id>/register', methods=['POST'])
+def api_register_participant(exam_id):
+    """API: Register participant for immersive exam"""
+    data = request.json
+    
+    try:
+        participant_id = data.get('participant_id')
+        participant_type = data.get('participant_type', 'human')
+        
+        if not participant_id:
+            return jsonify({'error': 'participant_id is required'}), 400
+        
+        success = immersive_exam_service.register_participant(
+            exam_id=exam_id,
+            participant_id=participant_id,
+            participant_type=ParticipantType(participant_type)
+        )
+        
+        if success:
+            return jsonify({
+                'message': 'Participant registered',
+                'participant_id': participant_id
+            }), 200
+        else:
+            return jsonify({'error': 'Failed to register participant'}), 400
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+@app.route('/api/exam/immersive/<exam_id>/start', methods=['POST'])
+def api_start_immersive_exam(exam_id):
+    """API: Start immersive exam"""
+    try:
+        success = immersive_exam_service.start_exam(exam_id)
+        
+        if success:
+            return jsonify({'message': 'Exam started'}), 200
+        else:
+            return jsonify({'error': 'Failed to start exam'}), 400
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+@app.route('/api/exam/immersive/<exam_id>/status', methods=['GET'])
+def api_get_immersive_exam_status(exam_id):
+    """API: Get current status of immersive exam"""
+    participant_id = request.args.get('participant_id')
+    
+    if not participant_id:
+        return jsonify({'error': 'participant_id parameter is required'}), 400
+    
+    try:
+        status = immersive_exam_service.get_exam_status(exam_id, participant_id)
+        
+        if status:
+            return jsonify(status.model_dump()), 200
+        else:
+            return jsonify({'error': 'Exam or participant not found'}), 404
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+@app.route('/api/exam/immersive/<exam_id>/answer', methods=['POST'])
+def api_submit_immersive_answer(exam_id):
+    """API: Submit answer for current question"""
+    data = request.json
+    
+    try:
+        answer_submission = ImmersiveExamAnswer(
+            exam_id=exam_id,
+            participant_id=data['participant_id'],
+            question_index=data['question_index'],
+            answer=float(data['answer'])
+        )
+        
+        success = immersive_exam_service.submit_answer(answer_submission)
+        
+        if success:
+            # Check if all participants have answered
+            all_answered = immersive_exam_service.check_all_answered_current(exam_id)
+            
+            return jsonify({
+                'message': 'Answer submitted',
+                'all_answered': all_answered
+            }), 200
+        else:
+            return jsonify({'error': 'Failed to submit answer'}), 400
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+@app.route('/api/exam/immersive/<exam_id>/advance', methods=['POST'])
+def api_advance_immersive_exam(exam_id):
+    """API: Advance to next question (admin/server control)"""
+    try:
+        success = immersive_exam_service.advance_to_next_question(exam_id)
+        
+        if success:
+            exam = immersive_exam_service.get_exam(exam_id)
+            return jsonify({
+                'message': 'Advanced to next question',
+                'current_question_index': exam.current_question_index if exam else None,
+                'status': exam.status if exam else None
+            }), 200
+        else:
+            return jsonify({'error': 'Failed to advance'}), 400
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+@app.route('/api/exam/immersive/<exam_id>/results', methods=['GET'])
+def api_get_immersive_exam_results(exam_id):
+    """API: Get final results of immersive exam"""
+    try:
+        results = immersive_exam_service.get_exam_results(exam_id)
+        
+        if results:
+            return jsonify(results), 200
+        else:
+            return jsonify({'error': 'Exam not found'}), 404
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+@app.route('/api/exam/immersive/list', methods=['GET'])
+def api_list_immersive_exams():
+    """API: List all active immersive exams"""
+    try:
+        exam_ids = immersive_exam_service.list_active_exams()
+        exams = []
+        
+        for exam_id in exam_ids:
+            exam = immersive_exam_service.get_exam(exam_id)
+            if exam:
+                exams.append({
+                    'exam_id': exam.exam_id,
+                    'status': exam.status,
+                    'total_questions': len(exam.questions),
+                    'participants_count': len(exam.participants),
+                    'created_at': exam.created_at.isoformat()
+                })
+        
+        return jsonify(exams), 200
+        
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 

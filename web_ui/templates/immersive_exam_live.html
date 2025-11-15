@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}Live Immersive Exam - GradeSchoolMathSolver-RAG{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+    <h2 style="color: #667eea; margin-bottom: 20px;">🎯 Live Immersive Exam</h2>
+    
+    <div id="loading" style="text-align: center; padding: 40px;">
+        <p style="font-size: 18px; color: #666;">Loading exam...</p>
+    </div>
+    
+    <div id="examContent" style="display: none;">
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: center;">
+                <div>
+                    <div style="font-size: 14px; color: #666;">Question</div>
+                    <div style="font-size: 24px; font-weight: bold; color: #667eea;">
+                        <span id="current_q">1</span> / <span id="total_q">10</span>
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: 14px; color: #666;">Participants Answered</div>
+                    <div style="font-size: 24px; font-weight: bold; color: #4caf50;">
+                        <span id="answered_count">0</span> / <span id="total_participants">0</span>
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: 14px; color: #666;">Status</div>
+                    <div style="font-size: 24px; font-weight: bold;" id="exam_status">In Progress</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="loginSection" style="margin-bottom: 30px;">
+            <div style="background: #fff3cd; padding: 20px; border-radius: 8px; border-left: 4px solid #ffc107;">
+                <h3 style="margin-bottom: 15px;">Please identify yourself</h3>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="participant_id" placeholder="Enter your username or agent name" style="flex: 1;">
+                    <button onclick="login()" class="button">Join Exam</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="questionSection" style="display: none;">
+            <div style="background: white; padding: 30px; border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); margin-bottom: 20px;">
+                <h3 style="color: #667eea; margin-bottom: 20px;" id="question_text">Loading question...</h3>
+                <p style="font-size: 18px; color: #666; margin-bottom: 10px;">Equation:</p>
+                <p style="font-size: 24px; font-weight: bold; margin-bottom: 30px;" id="equation_text">-</p>
+                
+                <div id="answerForm" style="margin-top: 30px;">
+                    <div class="form-group">
+                        <label>Your Answer</label>
+                        <input type="number" id="answer_input" step="0.01" placeholder="Enter your answer" style="font-size: 20px;">
+                    </div>
+                    <button onclick="submitAnswer()" class="button" style="font-size: 18px; padding: 15px 40px; background: #4caf50;">
+                        Submit Answer
+                    </button>
+                </div>
+                
+                <div id="waitingMessage" style="display: none; text-align: center; padding: 30px;">
+                    <p style="font-size: 18px; color: #4caf50; font-weight: bold;">✅ Answer submitted!</p>
+                    <p style="color: #666; margin-top: 10px;">Waiting for other participants...</p>
+                </div>
+            </div>
+            
+            <div id="previousAnswers" style="display: none; background: #e3f2fd; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <h4 style="color: #1976d2; margin-bottom: 15px;">📊 Previous Participants' Answers</h4>
+                <div id="previous_answers_list"></div>
+            </div>
+        </div>
+        
+        <div id="completedSection" style="display: none; text-align: center; padding: 40px;">
+            <div class="success" style="font-size: 20px; padding: 30px;">
+                <h3 style="margin-bottom: 15px;">🎉 Exam Completed!</h3>
+                <p>All questions have been answered.</p>
+            </div>
+            <button onclick="viewResults()" class="button" style="font-size: 18px; padding: 15px 40px; margin-top: 20px;">
+                View Results
+            </button>
+        </div>
+        
+        <div style="margin-top: 30px; text-align: center;">
+            <button onclick="refreshStatus()" class="button" style="background: #999;">Refresh Status</button>
+            <button onclick="advanceQuestion()" class="button" style="background: #ff9800; margin-left: 10px;">
+                Admin: Next Question
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+const examId = '{{ exam_id }}';
+let currentParticipantId = null;
+let pollInterval = null;
+
+async function loadExam() {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('examContent').style.display = 'block';
+}
+
+function login() {
+    const participantId = document.getElementById('participant_id').value.trim();
+    if (!participantId) {
+        alert('Please enter your username or agent name');
+        return;
+    }
+    
+    currentParticipantId = participantId;
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('questionSection').style.display = 'block';
+    
+    // Start polling for status
+    refreshStatus();
+    pollInterval = setInterval(refreshStatus, 3000);  // Poll every 3 seconds
+}
+
+async function refreshStatus() {
+    if (!currentParticipantId) return;
+    
+    try {
+        const response = await fetch(`/api/exam/immersive/${examId}/status?participant_id=${currentParticipantId}`);
+        const status = await response.json();
+        
+        if (response.ok) {
+            updateUI(status);
+        } else {
+            console.error('Error fetching status:', status.error);
+        }
+    } catch (error) {
+        console.error('Failed to fetch status:', error);
+    }
+}
+
+function updateUI(status) {
+    // Update header stats
+    document.getElementById('current_q').textContent = status.current_question_index + 1;
+    document.getElementById('total_q').textContent = status.total_questions;
+    document.getElementById('answered_count').textContent = status.participants_answered;
+    document.getElementById('total_participants').textContent = status.total_participants;
+    document.getElementById('exam_status').textContent = status.status === 'in_progress' ? 'In Progress' : 
+                                                         status.status === 'completed' ? 'Completed' : 
+                                                         'Waiting';
+    
+    // Check if exam is completed
+    if (status.status === 'completed') {
+        document.getElementById('questionSection').style.display = 'none';
+        document.getElementById('completedSection').style.display = 'block';
+        if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+        }
+        return;
+    }
+    
+    // Update question
+    if (status.current_question) {
+        document.getElementById('question_text').textContent = status.current_question.question_text;
+        document.getElementById('equation_text').textContent = status.current_question.equation + ' = ?';
+    }
+    
+    // Show/hide answer form based on whether participant has answered
+    const hasAnswered = status.participants_answered > 0; // This is simplified
+    // We need to check if THIS participant has answered
+    // For now, we'll use a simple check
+    
+    // Show previous answers if available
+    if (status.can_see_previous_answers && status.previous_answers.length > 0) {
+        document.getElementById('previousAnswers').style.display = 'block';
+        const answersList = status.previous_answers.map(a => 
+            `<div style="padding: 10px; background: white; margin: 5px 0; border-radius: 5px;">
+                <strong>${a.participant_id}</strong> (${a.participant_type}): 
+                <span style="font-size: 18px; font-weight: bold;">${a.answer}</span>
+                ${a.is_correct ? '<span style="color: #4caf50;">✓</span>' : '<span style="color: #f44336;">✗</span>'}
+            </div>`
+        ).join('');
+        document.getElementById('previous_answers_list').innerHTML = answersList;
+    } else {
+        document.getElementById('previousAnswers').style.display = 'none';
+    }
+}
+
+async function submitAnswer() {
+    if (!currentParticipantId) return;
+    
+    const answer = document.getElementById('answer_input').value;
+    if (!answer) {
+        alert('Please enter an answer');
+        return;
+    }
+    
+    const status = await getCurrentStatus();
+    if (!status) return;
+    
+    try {
+        const response = await fetch(`/api/exam/immersive/${examId}/answer`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                participant_id: currentParticipantId,
+                question_index: status.current_question_index,
+                answer: parseFloat(answer)
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            document.getElementById('answerForm').style.display = 'none';
+            document.getElementById('waitingMessage').style.display = 'block';
+            document.getElementById('answer_input').value = '';
+            
+            // If all answered, auto-advance after a delay
+            if (result.all_answered) {
+                setTimeout(() => {
+                    advanceQuestion();
+                }, 2000);
+            }
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Failed to submit answer: ' + error);
+    }
+}
+
+async function getCurrentStatus() {
+    try {
+        const response = await fetch(`/api/exam/immersive/${examId}/status?participant_id=${currentParticipantId}`);
+        if (response.ok) {
+            return await response.json();
+        }
+    } catch (error) {
+        console.error('Error getting status:', error);
+    }
+    return null;
+}
+
+async function advanceQuestion() {
+    try {
+        const response = await fetch(`/api/exam/immersive/${examId}/advance`, {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            // Reset UI for next question
+            document.getElementById('answerForm').style.display = 'block';
+            document.getElementById('waitingMessage').style.display = 'none';
+            document.getElementById('answer_input').value = '';
+            
+            // Refresh status
+            setTimeout(refreshStatus, 500);
+        } else {
+            console.error('Error advancing:', result.error);
+        }
+    } catch (error) {
+        console.error('Failed to advance question:', error);
+    }
+}
+
+function viewResults() {
+    window.location.href = `/immersive/${examId}/results`;
+}
+
+// Initialize
+loadExam();
+</script>
+{% endblock %}
