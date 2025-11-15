@@ -61,6 +61,10 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
+# Project-specific
+math_solver.db
+chroma_db/
+
 # Flask stuff:
 instance/
 .webassets-cache
