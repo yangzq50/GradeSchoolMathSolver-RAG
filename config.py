@@ -40,3 +40,6 @@ class Config:
     
     # Difficulty levels
     DIFFICULTY_LEVELS = ['easy', 'medium', 'hard']
+    
+    # Teacher Service
+    TEACHER_SERVICE_ENABLED = os.getenv('TEACHER_SERVICE_ENABLED', 'True').lower() == 'true'

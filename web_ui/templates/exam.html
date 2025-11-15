@@ -123,36 +123,72 @@ document.getElementById('submitAnswers').addEventListener('click', async () => {
         return;
     }
     
-    // Process answers locally
-    let correctCount = 0;
+    const messageDiv = document.getElementById('message');
+    messageDiv.innerHTML = '<div style="text-align: center; padding: 20px;">Processing your answers...</div>';
+    
+    try {
+        // Submit to backend for processing
+        const response = await fetch('/api/exam/human/submit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: currentUsername,
+                difficulty: document.getElementById('difficulty').value,
+                questions: currentQuestions,
+                answers: answers
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            displayResults(data);
+            messageDiv.innerHTML = '';
+        } else {
+            messageDiv.innerHTML = `<div class="error">${data.error || 'Error processing answers'}</div>`;
+        }
+    } catch (error) {
+        messageDiv.innerHTML = '<div class="error">Error submitting answers</div>';
+        console.error(error);
+    }
+});
+
+function displayResults(data) {
     let resultsHtml = '<div style="background: #f0f4ff; padding: 30px; border-radius: 10px; margin-bottom: 20px;">';
     resultsHtml += `<div style="text-align: center; margin-bottom: 20px;">`;
-    
-    currentQuestions.forEach((q, idx) => {
-        const userAnswer = answers[idx];
-        const isCorrect = Math.abs(userAnswer - q.answer) < 0.01;
-        if (isCorrect) correctCount++;
-    });
-    
-    const score = (correctCount / currentQuestions.length) * 100;
-    resultsHtml += `<h3 style="color: #667eea;">Score: ${correctCount}/${currentQuestions.length} (${score.toFixed(2)}%)</h3>`;
+    resultsHtml += `<h3 style="color: #667eea;">Score: ${data.correct_answers}/${data.total_questions} (${data.score}%)</h3>`;
     resultsHtml += '</div>';
     
-    currentQuestions.forEach((q, idx) => {
-        const userAnswer = answers[idx];
-        const isCorrect = Math.abs(userAnswer - q.answer) < 0.01;
+    data.results.forEach((result) => {
+        const isCorrect = result.is_correct;
         const bgColor = isCorrect ? '#e8f5e9' : '#ffebee';
         const borderColor = isCorrect ? '#4caf50' : '#f44336';
         
         resultsHtml += `
             <div style="background: ${bgColor}; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid ${borderColor};">
-                <p><strong>Question ${idx + 1}:</strong> ${q.question_text}</p>
-                <p><strong>Equation:</strong> ${q.equation}</p>
-                <p><strong>Your Answer:</strong> ${userAnswer}</p>
-                <p><strong>Correct Answer:</strong> ${q.answer}</p>
+                <p><strong>Question ${result.question_number}:</strong> ${result.question}</p>
+                <p><strong>Equation:</strong> ${result.equation}</p>
+                <p><strong>Your Answer:</strong> ${result.user_answer}</p>
+                <p><strong>Correct Answer:</strong> ${result.correct_answer}</p>
                 <p style="color: ${borderColor}; font-weight: bold;">${isCorrect ? '✓ Correct' : '✗ Incorrect'}</p>
-            </div>
         `;
+        
+        // Display teacher feedback for wrong answers
+        if (!isCorrect && result.teacher_feedback) {
+            resultsHtml += `
+                <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 6px; border-left: 3px solid #667eea;">
+                    <h4 style="color: #667eea; margin-top: 0; margin-bottom: 10px;">
+                        👨‍🏫 Teacher's Feedback
+                    </h4>
+                    <p style="margin-bottom: 10px;"><strong>${result.teacher_feedback.feedback}</strong></p>
+                    <div style="white-space: pre-wrap; line-height: 1.6;">${result.teacher_feedback.explanation}</div>
+                </div>
+            `;
+        }
+        
+        resultsHtml += `</div>`;
     });
     
     resultsHtml += '</div>';
@@ -161,6 +197,6 @@ document.getElementById('submitAnswers').addEventListener('click', async () => {
     document.getElementById('resultsContent').innerHTML = resultsHtml;
     document.getElementById('resultsContainer').style.display = 'block';
     document.getElementById('questionsContainer').style.display = 'none';
-});
+}
 </script>
 {% endblock %}

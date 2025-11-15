@@ -131,3 +131,13 @@ class ImmersiveExamStatus(BaseModel):
     total_participants: int = 0
     can_see_previous_answers: bool = False
     previous_answers: List[Dict[str, Any]] = []
+
+
+class TeacherFeedback(BaseModel):
+    """Feedback from teacher service for wrong answers"""
+    equation: str
+    question: str
+    correct_answer: float
+    user_answer: float
+    feedback: str
+    explanation: str
