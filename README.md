@@ -134,9 +134,13 @@ The system consists of 12 main components:
    ```
 
 6. **Run the web application**
+   
+   From the project root directory, run:
    ```bash
-   python web_ui/app.py
+   python -m web_ui.app
    ```
+   
+   **Note:** Make sure you run this command from the project root directory (`GradeSchoolMathSolver-RAG/`), not from inside the `web_ui/` folder.
 
 7. **Open your browser**
    ```
@@ -475,6 +479,27 @@ GradeSchoolMathSolver-RAG/
 4. **New UI Page**: Add template to `web_ui/templates/`
 
 ## 🐛 Troubleshooting
+
+### Module Import Errors
+
+If you get errors like `ModuleNotFoundError: No module named 'config'`, `'models'`, or `'services'`:
+
+1. **Make sure you're running from the project root directory**
+   ```bash
+   cd GradeSchoolMathSolver-RAG
+   python -m web_ui.app
+   ```
+
+2. **Alternative: Set PYTHONPATH**
+   ```bash
+   export PYTHONPATH=/path/to/GradeSchoolMathSolver-RAG
+   python web_ui/app.py
+   ```
+
+3. **Make sure dependencies are installed**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 ### AI Model Not Responding
 
