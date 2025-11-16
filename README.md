@@ -630,7 +630,8 @@ For questions or support, please open an issue on GitHub.
 
 ## 🙏 Acknowledgments
 
-- Ollama for easy AI model deployment
+- Docker Model Runner for local AI model hosting
+- Ollama for alternative AI model deployment
 - LLaMA 3.2 for language generation
 - Elasticsearch for RAG capabilities
 - Flask for web framework

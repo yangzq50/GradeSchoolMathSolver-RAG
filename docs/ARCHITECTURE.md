@@ -129,8 +129,8 @@ GradeSchoolMathSolver-RAG is a modular AI-powered math learning system with 9 co
   - rag_correct_only: RAG with correct answers only
 
 ### 9. AI Model Service
-- **Technology**: Docker Desktop AI models (or Ollama/compatible service)
-- **Port**: 12434 (default for Docker Desktop)
+- **Technology**: Docker Model Runner (or Ollama/other compatible service)
+- **Port**: 12434 (default for Docker Model Runner)
 - **API**: OpenAI-compatible chat completions format
 - **Endpoint**: `/engines/{LLM_ENGINE}/v1/chat/completions`
 - **Uses**:
@@ -138,7 +138,7 @@ GradeSchoolMathSolver-RAG is a modular AI-powered math learning system with 9 co
   - Classify questions (optional, with fallback)
   - Solve problems with reasoning
   - Provide educational feedback (teacher service)
-- **Models**: LLaMA 3.2 (quantized: 1B-Q4_0, 3B-Q4_0, 7B)
+- **Models**: LLaMA 3.2 (quantized: 1B-Q4_0, 3B-Q4_0, 7B) or similar
 
 ## Data Flow
 
@@ -250,17 +250,17 @@ FLASK_DEBUG=False
 
 ### Local Development
 - Run services individually for development
-- Use local Ollama installation
+- Use Docker Model Runner or local Ollama installation
 - SQLite for persistence
 
 ### Docker Compose (Recommended)
-- All services in containers
-- Ollama, Elasticsearch, and Web UI
+- Elasticsearch and Web UI in containers
+- Docker Model Runner running on host
 - Persistent volumes for data
 - Easy scaling
 
 ### Production
-- Separate AI model service
+- Separate AI model service (Docker Model Runner, Ollama, or cloud API)
 - Dedicated Elasticsearch cluster
 - Load balanced web servers
 - PostgreSQL instead of SQLite (for scaling)
@@ -350,9 +350,9 @@ FLASK_DEBUG=False
 ### Common Issues
 
 1. **AI Model Not Responding**
-   - Check Ollama status
+   - Check Docker Model Runner or Ollama status
    - Verify model is downloaded
-   - Test API endpoint
+   - Test API endpoint (localhost:12434 or localhost:11434)
    - Services fall back to templates
 
 2. **Elasticsearch Connection Failed**

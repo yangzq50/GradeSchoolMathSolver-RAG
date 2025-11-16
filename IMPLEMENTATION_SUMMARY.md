@@ -14,12 +14,12 @@ All 9 components from the original specification have been implemented:
 
 ### 0. AI Model Service ✅
 - **Status**: Documented
-- **Technology**: Docker + Ollama + LLaMA 3.2
+- **Technology**: Docker Desktop Model Runner (or compatible OpenAI-style API service)
 - **Documentation**: `docs/AI_MODEL_SERVICE.md`
 - **Features**:
   - Step-by-step deployment guide
   - Docker Compose configuration
-  - Alternative deployment options
+  - Alternative deployment options (Ollama, etc.)
   - Troubleshooting guide
   - Performance optimization tips
 
@@ -184,8 +184,9 @@ Beyond the core requirements, the following have been provided:
 ### Technology Stack
 - **Backend**: Python 3.11+ with Flask
 - **Frontend**: HTML5 + CSS3 + JavaScript
-- **AI**: Ollama + LLaMA 3.2
-- **Search**: Elasticsearch 8.11
+- **AI**: Docker Model Runner (or compatible OpenAI-style API like Ollama)
+- **Model**: LLaMA 3.2 or similar
+- **Search**: Elasticsearch 9.2+
 - **Database**: SQLite (SQLAlchemy)
 - **Deployment**: Docker + Docker Compose
 
