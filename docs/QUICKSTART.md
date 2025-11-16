@@ -6,7 +6,7 @@ Get GradeSchoolMathSolver-RAG up and running in 5 minutes!
 
 Before starting, ensure you have:
 - ✅ Python 3.11 or higher
-- ✅ Docker Desktop with AI models feature
+- ✅ Docker Desktop with **Docker Model Runner** enabled
 - ✅ 8GB+ RAM available
 - ✅ 10GB+ free disk space
 
@@ -16,12 +16,20 @@ python3 --version  # Should be 3.11+
 docker --version   # Should be installed
 ```
 
-## Option 1: Docker Desktop AI (Recommended)
+## Option 1: Docker Model Runner (Recommended)
 
-### Step 1: Set Up Docker Desktop AI Models
-1. **Install Docker Desktop** from https://www.docker.com/products/docker-desktop
-2. **Enable AI Models**: Open Docker Desktop → Settings → AI
-3. **Download Model**: Select and download LLaMA 3.2 (1B or 3B quantized recommended)
+### Step 1: Set Up Docker Model Runner
+
+**Docker Model Runner** is Docker Desktop's built-in AI model hosting service.
+
+1. **Install Docker Desktop** from https://www.docker.com/products/docker-desktop (version 4.32+)
+2. **Enable Docker Model Runner**: 
+   - Open Docker Desktop → Settings → Features in development
+   - Enable "Enable Docker AI Model Runner"
+   - Click Apply & Restart
+3. **Download Model**: 
+   - Navigate to the AI Models or Models section in Docker Desktop
+   - Search for and download `llama3.2:1B-Q4_0` (recommended for speed)
 4. **Verify**: Models should be accessible at `localhost:12434`
 
 Test the AI service:
@@ -43,25 +51,35 @@ cd GradeSchoolMathSolver-RAG
 ### Step 3: Configure Environment
 ```bash
 cp .env.example .env
-# Default .env values are configured for Docker Desktop AI:
+# Default .env values are configured for Docker Model Runner:
 # AI_MODEL_URL=http://localhost:12434
 # AI_MODEL_NAME=ai/llama3.2:1B-Q4_0
 # LLM_ENGINE=llama.cpp
 ```
 
-### Step 4: Start Elasticsearch
+### Step 4: Start Services with Docker Compose
+
+You have two options:
+
+**Option A: Start Everything (Recommended)**
 ```bash
 docker-compose up -d
+```
+This starts both Elasticsearch and the web application. Open http://localhost:5000 when ready.
+
+**Option B: Start Elasticsearch Only (for local development)**
+```bash
+docker-compose up -d elasticsearch
 ```
 
 Wait 30 seconds for Elasticsearch to start.
 
-### Step 5: Install Python Dependencies
+### Step 5: Install Python Dependencies (if using Option B)
 ```bash
 pip install -r requirements.txt
 ```
 
-### Step 6: Start Web Application
+### Step 6: Start Web Application (if using Option B)
 ```bash
 python -m web_ui.app
 ```
@@ -106,7 +124,11 @@ LLM_ENGINE=ollama
 
 ### Step 4: Start Elasticsearch and Application
 ```bash
-docker-compose up -d  # Only starts Elasticsearch
+# Option 1: Start everything with docker-compose
+docker-compose up -d
+
+# Option 2: Start only Elasticsearch, then run web app locally
+docker-compose up -d elasticsearch
 pip install -r requirements.txt
 python -m web_ui.app
 ```
@@ -187,18 +209,24 @@ You should see:
 
 Check if AI service is running:
 ```bash
-# For Docker Desktop AI (port 12434)
+# For Docker Model Runner (port 12434)
 curl http://localhost:12434/engines/llama.cpp/v1/models
 
 # For Ollama (port 11434)
 curl http://localhost:11434/api/version
 ```
 
+If Docker Model Runner is not responding:
+1. Check Docker Desktop is running
+2. Verify Docker Model Runner is enabled in Settings → Features in development
+3. Check that models are downloaded in the Models section
+4. Restart Docker Desktop if needed
+
 ### Docker Services Won't Start
 
 Check if ports are already in use:
 ```bash
-# Check port 12434 (Docker Desktop AI)
+# Check port 12434 (Docker Model Runner)
 lsof -i :12434
 
 # Check port 9200 (Elasticsearch)
@@ -215,14 +243,14 @@ Stop conflicting services or change ports in configuration.
 This is normal on first run. The AI model needs to warm up. Subsequent questions will be faster.
 
 To speed up:
-1. Use Docker Desktop AI with GPU support enabled
+1. Use Docker Model Runner with GPU support enabled in Docker Desktop
 2. Use a smaller/quantized model: `ai/llama3.2:1B-Q4_0`
 3. Reduce question complexity
 4. Ensure adequate system resources (CPU/RAM)
 
 ## Configuration Tips
 
-### Use GPU Acceleration (Docker Desktop)
+### Use GPU Acceleration (Docker Model Runner)
 
 Enable GPU in Docker Desktop settings:
 1. Open Docker Desktop → Settings → Resources
