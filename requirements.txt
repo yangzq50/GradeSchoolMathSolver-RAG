@@ -1,27 +1,27 @@
 # Core dependencies
-flask==3.0.0
-flask-cors==6.0.0
+flask==3.1.2
+flask-cors==6.0.1
 
 # Database
-elasticsearch==8.11.1
-sqlalchemy==2.0.23
+elasticsearch==8.16.0
+sqlalchemy==2.0.44
 
 # AI/ML
-requests==2.32.4
-numpy==1.26.2
+requests==2.32.5
+numpy==1.26.4
 
 # Utilities
-python-dotenv==1.0.0
-pydantic==2.5.2
+python-dotenv==1.0.1
+pydantic==2.10.5
 
 # Web UI
 jinja2==3.1.6
 
 # Testing
-pytest==7.4.3
-pytest-cov==4.1.0
+pytest==8.3.5
+pytest-cov==6.0.0
 
 # Linting and Type Checking
-flake8==7.0.0
-mypy==1.8.0
+flake8==7.1.1
+mypy==1.14.1
 types-requests==2.32.0.20240914

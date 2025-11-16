@@ -100,7 +100,7 @@ The system consists of 12 main components:
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.10+
 - Docker (for AI model and Elasticsearch)
 - 8GB+ RAM recommended
 

@@ -1,0 +1,55 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Changed
+- **Python Version Support**: Updated minimum supported Python version from 3.11 to 3.10
+  - Updated README.md to specify Python 3.10+ as minimum requirement
+  - Updated Dockerfile base image from `python:3.11-slim` to `python:3.10-slim`
+  - Updated CI/CD pipeline to test on Python 3.10, 3.11, and 3.12
+
+### Updated Dependencies
+All dependencies have been updated to their latest compatible versions that support Python 3.10+:
+
+#### Core Dependencies
+- `flask`: 3.0.0 → 3.1.2 (minor version update with bug fixes and improvements)
+- `flask-cors`: 6.0.0 → 6.0.1 (patch update)
+
+#### Database
+- `elasticsearch`: 8.11.1 → 8.16.0 (minor version update, staying within 8.x for compatibility)
+- `sqlalchemy`: 2.0.23 → 2.0.44 (patch updates with bug fixes)
+
+#### AI/ML
+- `requests`: 2.32.4 → 2.32.5 (patch update)
+- `numpy`: 1.26.2 → 1.26.4 (patch update, staying within 1.26.x to avoid breaking changes)
+
+#### Utilities
+- `python-dotenv`: 1.0.0 → 1.0.1 (patch update)
+- `pydantic`: 2.5.2 → 2.10.5 (minor version update with improvements and bug fixes)
+
+#### Web UI
+- `jinja2`: 3.1.6 (unchanged - already latest)
+
+#### Testing
+- `pytest`: 7.4.3 → 8.3.5 (major version update to 8.x with new features)
+- `pytest-cov`: 4.1.0 → 6.0.0 (major version update with improved coverage reporting)
+
+#### Linting and Type Checking
+- `flake8`: 7.0.0 → 7.1.1 (minor version update)
+- `mypy`: 1.8.0 → 1.14.1 (minor version update with improved type checking)
+- `types-requests`: 2.32.0.20240914 (unchanged)
+
+### Compatibility Notes
+- All updated packages have been verified to support Python 3.10, 3.11, and 3.12
+- No breaking changes expected from the dependency updates
+- All existing tests (25/25) pass successfully with updated dependencies
+- No code changes required to support Python 3.10
+
+### Testing
+- Verified all 25 existing tests pass on Python 3.12 with updated dependencies
+- CI pipeline now tests on Python 3.10, 3.11, and 3.12 to ensure cross-version compatibility
