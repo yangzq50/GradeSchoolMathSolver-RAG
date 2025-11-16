@@ -8,10 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- **Python Version Support**: Updated minimum supported Python version from 3.11 to 3.10
-  - Updated README.md to specify Python 3.10+ as minimum requirement
-  - Updated Dockerfile base image from `python:3.11-slim` to `python:3.10-slim`
-  - Updated CI/CD pipeline to test on Python 3.10, 3.11, and 3.12
+- **Python Version Support**: Maintaining Python 3.11+ as minimum supported version
+  - Updated CI/CD pipeline to test on Python 3.11, 3.12, and 3.13
+  - All dependencies compatible with Python 3.11+
 
 ### Updated Dependencies
 All dependencies have been updated to their absolute latest versions that support Python 3.10+:
@@ -26,7 +25,7 @@ All dependencies have been updated to their absolute latest versions that suppor
 
 #### AI/ML
 - `requests`: 2.32.4 → 2.32.5 (patch update)
-- `numpy`: 1.26.2 → 1.26.4 (patch update, staying within 1.26.x for Python 3.10 compatibility)
+- `numpy`: 1.26.2 → **2.3.4** (major version update to numpy 2.x with improved performance and new features)
 
 #### Utilities
 - `python-dotenv`: 1.0.0 → 1.2.1 (minor version update)
@@ -45,13 +44,13 @@ All dependencies have been updated to their absolute latest versions that suppor
 - `types-requests`: 2.32.0.20240914 → 2.32.4.20250913 (type stubs update)
 
 ### Compatibility Notes
-- All updated packages have been verified to support Python 3.10, 3.11, and 3.12
-- **numpy**: Staying with 1.26.4 (not upgrading to 2.x) as numpy 2.x requires Python >=3.11. Version 1.26.4 is the latest that supports Python 3.10
-- **elasticsearch**: Successfully upgraded to 9.x which now supports Python 3.10+
+- All updated packages have been verified to support Python 3.11, 3.12, and 3.13
+- **numpy 2.x**: Major upgrade brings significant performance improvements and new features. Requires Python >=3.11
+- **elasticsearch**: Successfully upgraded to 9.x with enhanced features and performance
 - No breaking changes expected from the dependency updates
 - All existing tests (25/25) pass successfully with updated dependencies
-- No code changes required to support Python 3.10
+- No code changes required to support the latest packages
 
 ### Testing
 - Verified all 25 existing tests pass on Python 3.12 with updated dependencies
-- CI pipeline now tests on Python 3.10, 3.11, and 3.12 to ensure cross-version compatibility
+- CI pipeline now tests on Python 3.11, 3.12, and 3.13 to ensure cross-version compatibility
