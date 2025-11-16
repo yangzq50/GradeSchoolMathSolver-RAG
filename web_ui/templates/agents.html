@@ -156,11 +156,11 @@ function displayTestResults(data) {
         html += `
             <div style="background: ${bgColor}; padding: 20px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid ${borderColor};">
                 <h4 style="color: #333; margin-bottom: 10px;">Question ${result.question_number}</h4>
-                <p style="margin-bottom: 8px;"><strong>Question:</strong> ${result.question}</p>
-                <p style="margin-bottom: 8px;"><strong>Equation:</strong> ${result.equation}</p>
+                <p style="margin-bottom: 8px;"><strong>Question:</strong> ${result.question || 'N/A'}</p>
+                <p style="margin-bottom: 8px;"><strong>Equation:</strong> ${result.equation || 'N/A'}</p>
                 <p style="margin-bottom: 8px;"><strong>Agent Answer:</strong> ${result.agent_answer}</p>
                 <p style="margin-bottom: 8px;"><strong>Correct Answer:</strong> ${result.correct_answer}</p>
-                <p style="margin-bottom: 8px;"><strong>Category:</strong> ${result.category}</p>
+                <p style="margin-bottom: 8px;"><strong>Category:</strong> ${result.category || 'unknown'}</p>
                 <p style="margin-bottom: 8px; color: ${borderColor}; font-weight: bold;">
                     ${result.is_correct ? '✓ Correct' : '✗ Incorrect'}
                 </p>

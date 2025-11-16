@@ -168,8 +168,8 @@ function displayResults(data) {
         
         resultsHtml += `
             <div style="background: ${bgColor}; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid ${borderColor};">
-                <p><strong>Question ${result.question_number}:</strong> ${result.question}</p>
-                <p><strong>Equation:</strong> ${result.equation}</p>
+                <p><strong>Question ${result.question_number}:</strong> ${result.question || 'N/A'}</p>
+                <p><strong>Equation:</strong> ${result.equation || 'N/A'}</p>
                 <p><strong>Your Answer:</strong> ${result.user_answer}</p>
                 <p><strong>Correct Answer:</strong> ${result.correct_answer}</p>
                 <p style="color: ${borderColor}; font-weight: bold;">${isCorrect ? '✓ Correct' : '✗ Incorrect'}</p>

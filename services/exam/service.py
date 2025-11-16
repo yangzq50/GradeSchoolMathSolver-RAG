@@ -189,6 +189,16 @@ class ExamService:
             if is_correct:
                 correct_count += 1
 
+            # Record in account service (for answer history in Users page)
+            self.account_service.record_answer(
+                username=request.username,
+                question=question.question_text,
+                equation=question.equation,
+                user_answer=agent_result['agent_answer'],
+                correct_answer=question.answer,
+                category=question.category or 'unknown'
+            )
+
             # Record in quiz history service
             quiz_history = QuizHistory(
                 username=request.username,
