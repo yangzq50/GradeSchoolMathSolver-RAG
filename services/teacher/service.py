@@ -92,19 +92,31 @@ Keep your explanation clear, encouraging, and educational.
 Focus on helping the student understand the concept, not just
 giving them the answer."""
 
+            # Use OpenAI-compatible chat/completions API
             response = requests.post(
-                f"{self.config.AI_MODEL_URL}/api/generate",
+                f"{self.config.AI_MODEL_URL}/engines/{self.config.LLM_ENGINE}/v1/chat/completions",
                 json={
                     "model": self.config.AI_MODEL_NAME,
-                    "prompt": prompt,
-                    "stream": False
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a patient and encouraging math teacher."
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
                 },
                 timeout=30
             )
 
             if response.status_code == 200:
                 result = response.json()
-                return result.get('response', '').strip()
+                # Extract content from OpenAI-compatible response
+                choices = result.get('choices', [])
+                if choices:
+                    return choices[0].get('message', {}).get('content', '').strip()
 
         except Exception as e:
             print(f"Error generating AI feedback: {e}")

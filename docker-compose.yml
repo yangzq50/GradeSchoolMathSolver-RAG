@@ -1,18 +1,6 @@
 version: '3.8'
 
 services:
-  # AI Model Service (Ollama)
-  ollama:
-    image: ollama/ollama
-    container_name: math-solver-ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    restart: unless-stopped
-    networks:
-      - math-solver-network
-
   # Elasticsearch for Quiz History
   elasticsearch:
     image: elasticsearch:9.2.1
@@ -36,8 +24,9 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - AI_MODEL_URL=http://ollama:11434
-      - AI_MODEL_NAME=llama3.2
+      - AI_MODEL_URL=http://host.docker.internal:12434
+      - AI_MODEL_NAME=ai/llama3.2:1B-Q4_0
+      - LLM_ENGINE=llama.cpp
       - ELASTICSEARCH_HOST=elasticsearch
       - ELASTICSEARCH_PORT=9200
       - DATABASE_PATH=/app/data/math_solver.db
@@ -46,14 +35,12 @@ services:
     volumes:
       - ./data:/app/data
     depends_on:
-      - ollama
       - elasticsearch
     restart: unless-stopped
     networks:
       - math-solver-network
 
 volumes:
-  ollama_data:
   es_data:
 
 networks:

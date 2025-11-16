@@ -11,8 +11,9 @@ class Config:
     """Application configuration"""
 
     # AI Model Service
-    AI_MODEL_URL = os.getenv('AI_MODEL_URL', 'http://localhost:11434')
-    AI_MODEL_NAME = os.getenv('AI_MODEL_NAME', 'llama3.2')
+    AI_MODEL_URL = os.getenv('AI_MODEL_URL', 'http://localhost:12434')
+    AI_MODEL_NAME = os.getenv('AI_MODEL_NAME', 'ai/llama3.2:1B-Q4_0')
+    LLM_ENGINE = os.getenv('LLM_ENGINE', 'llama.cpp')
 
     # Database
     DATABASE_PATH = os.getenv('DATABASE_PATH', 'data/math_solver.db')

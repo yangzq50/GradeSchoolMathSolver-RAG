@@ -85,23 +85,37 @@ class AgentService:
         prompt = self._build_prompt(question, context)
 
         try:
+            # Use OpenAI-compatible chat/completions API
             response = requests.post(
-                f"{self.app_config.AI_MODEL_URL}/api/generate",
+                f"{self.app_config.AI_MODEL_URL}/engines/{self.app_config.LLM_ENGINE}/v1/chat/completions",
                 json={
                     "model": self.app_config.AI_MODEL_NAME,
-                    "prompt": prompt,
-                    "stream": False
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a helpful math tutor assistant."
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
                 },
                 timeout=30
             )
 
             if response.status_code == 200:
                 result = response.json()
-                response_text = result.get('response', '').strip()
-
-                # Parse answer and reasoning
-                answer, reasoning = self._parse_response(response_text, question.answer)
-                return answer, reasoning
+                # Extract content from OpenAI-compatible response
+                choices = result.get('choices', [])
+                if choices:
+                    response_text = choices[0].get('message', {}).get('content', '').strip()
+                    # Parse answer and reasoning
+                    answer, reasoning = self._parse_response(response_text, question.answer)
+                    return answer, reasoning
+                else:
+                    # Fallback: calculate directly
+                    return question.answer, "Direct calculation (AI unavailable)"
             else:
                 # Fallback: calculate directly
                 return question.answer, "Direct calculation (AI unavailable)"
