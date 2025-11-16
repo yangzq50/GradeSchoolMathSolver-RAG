@@ -31,13 +31,12 @@ GradeSchoolMathSolver-RAG is a modular AI-powered math learning system with 9 co
 ┌──▼────────▼─────────────▼────────────▼───────────▼──────────▼───┐
 │                    External Services Layer                       │
 ├──────────────────────────────────────────────────────────────────┤
-│ AI Model (Ollama)  │  SQLite Database  │  Elasticsearch         │
-│ Port 11434         │  data/solver.db   │  Port 9200             │
-│ - LLaMA 3.2        │  - Users          │  - Quiz History Index  │
-│ - Question Gen     │  - Answer History │  - RAG Search          │
-│ - Classification   │  - Statistics     │  - Embeddings          │
-│ - Agent Reasoning  │                   │                         │
-└────────────────────┴───────────────────┴─────────────────────────┘
+│ AI Model (Docker Desktop) │  SQLite Database  │  Elasticsearch    │
+│ Port 12434                 │  data/solver.db   │  Port 9200        │
+│ - LLaMA 3.2 (quantized)    │  - Users          │  - Quiz History   │
+│ - OpenAI API Format        │  - Answer History │  - RAG Search     │
+│ - Chat Completions         │  - Statistics     │  - Similarity     │
+└────────────────────────────┴───────────────────┴───────────────────┘
 ```
 
 ## Service Details
@@ -130,14 +129,16 @@ GradeSchoolMathSolver-RAG is a modular AI-powered math learning system with 9 co
   - rag_correct_only: RAG with correct answers only
 
 ### 9. AI Model Service
-- **Technology**: Ollama + LLaMA 3.2
-- **Port**: 11434
-- **API**: OpenAI-compatible
+- **Technology**: Docker Desktop AI models (or Ollama/compatible service)
+- **Port**: 12434 (default for Docker Desktop)
+- **API**: OpenAI-compatible chat completions format
+- **Endpoint**: `/engines/{LLM_ENGINE}/v1/chat/completions`
 - **Uses**:
   - Generate natural language questions
-  - Classify questions (optional)
+  - Classify questions (optional, with fallback)
   - Solve problems with reasoning
-  - Explain solutions
+  - Provide educational feedback (teacher service)
+- **Models**: LLaMA 3.2 (quantized: 1B-Q4_0, 3B-Q4_0, 7B)
 
 ## Data Flow
 
@@ -227,8 +228,9 @@ All services are configured via environment variables in `.env`:
 
 ```bash
 # AI Model
-AI_MODEL_URL=http://localhost:11434
-AI_MODEL_NAME=llama3.2
+AI_MODEL_URL=http://localhost:12434
+AI_MODEL_NAME=ai/llama3.2:1B-Q4_0
+LLM_ENGINE=llama.cpp
 
 # Database
 DATABASE_PATH=data/math_solver.db

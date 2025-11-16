@@ -2,80 +2,78 @@
 
 ## Overview
 
-The GradeSchoolMathSolver-RAG system uses an AI model (LLaMA 3.2 or similar) for:
+The GradeSchoolMathSolver-RAG system uses an AI model (LLaMA 3.2 or similar) via an **OpenAI-compatible API** for:
 - Generating natural language questions from equations
 - Classifying math questions into categories
 - Solving math problems with reasoning (Agent service)
+- Providing educational feedback through the teacher service
+
+## API Format
+
+**Important**: This system uses the **OpenAI-compatible chat completions API format**, not the legacy Ollama generate API.
+
+All services in the codebase use:
+- Endpoint: `/engines/{LLM_ENGINE}/v1/chat/completions`
+- Request format: Messages array with `role` and `content`
+- Response format: OpenAI-style with `choices` array
 
 ## Deployment Options
 
-### Option 1: Docker Model Runner (Recommended)
+### Option 1: Docker Desktop AI Models (Recommended)
 
-This project is designed to work with Ollama running LLaMA 3.2 in a Docker container.
+This project is designed to work with Docker Desktop's built-in AI models feature.
 
 #### Setup Steps:
 
-1. **Install Docker**
+1. **Install Docker Desktop**
+   - Download from https://www.docker.com/products/docker-desktop
+   - Install Docker Desktop with AI features enabled
+
+2. **Enable AI Models in Docker Desktop**
+   - Open Docker Desktop settings
+   - Navigate to the AI section
+   - Enable AI models feature
+   - Download the desired model (e.g., LLaMA 3.2)
+
+3. **Verify Installation**
    ```bash
-   # Install Docker on your system
-   curl -fsSL https://get.docker.com -o get-docker.sh
-   sudo sh get-docker.sh
+   # Test the OpenAI-compatible API
+   curl http://localhost:12434/engines/llama.cpp/v1/chat/completions \
+     -H "Content-Type: application/json" \
+     -d '{
+       "model": "ai/llama3.2:1B-Q4_0",
+       "messages": [
+         {"role": "system", "content": "You are a helpful assistant."},
+         {"role": "user", "content": "What is 2+2?"}
+       ]
+     }'
    ```
 
-2. **Pull and Run Ollama**
-   ```bash
-   # Pull Ollama Docker image
-   docker pull ollama/ollama
-   
-   # Run Ollama container
-   docker run -d -v ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama
-   ```
-
-3. **Pull LLaMA 3.2 Model**
-   ```bash
-   # Pull the model
-   docker exec -it ollama ollama pull llama3.2
-   ```
-
-4. **Verify Installation**
-   ```bash
-   # Test the model
-   curl http://localhost:11434/api/generate -d '{
-     "model": "llama3.2",
-     "prompt": "What is 2+2?",
-     "stream": false
+4. **Expected Response Format**
+   ```json
+   {
+     "id": "chatcmpl-123",
+     "object": "chat.completion",
+     "created": 1234567890,
+     "model": "ai/llama3.2:1B-Q4_0",
+     "choices": [
+       {
+         "index": 0,
+         "message": {
+           "role": "assistant",
+           "content": "2+2 equals 4."
+         },
+         "finish_reason": "stop"
+       }
+     ]
    }'
    ```
 
-#### Docker Compose Setup:
+### Option 2: Alternative OpenAI-Compatible Services
 
-Create a `docker-compose.yml` file:
+The system works with any service providing an OpenAI-compatible chat completions API:
 
-```yaml
-version: '3.8'
-
-services:
-  ollama:
-    image: ollama/ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama:/root/.ollama
-    restart: unless-stopped
-
-volumes:
-  ollama:
-```
-
-Run with:
-```bash
-docker-compose up -d
-docker exec -it <container_id> ollama pull llama3.2
-```
-
-### Option 2: Local Ollama Installation
-
-If you prefer not to use Docker:
+#### Local Ollama with OpenAI Compatibility
 
 1. **Install Ollama**
    ```bash
@@ -84,9 +82,6 @@ If you prefer not to use Docker:
    
    # macOS
    brew install ollama
-   
-   # Windows
-   # Download from https://ollama.ai/download
    ```
 
 2. **Pull Model**
@@ -99,74 +94,113 @@ If you prefer not to use Docker:
    ollama serve
    ```
 
-### Option 3: Alternative Models
+4. **Update Configuration**
+   ```bash
+   AI_MODEL_URL=http://localhost:11434
+   AI_MODEL_NAME=llama3.2
+   LLM_ENGINE=ollama
+   ```
 
-The system can work with other models that provide an OpenAI-compatible API:
+#### Other Compatible Services
 
-- **LLaMA 3.1**: `ollama pull llama3.1`
-- **Mistral**: `ollama pull mistral`
-- **Gemma**: `ollama pull gemma`
+- **LM Studio**: Local LLM server with OpenAI API
+- **vLLM**: High-performance inference server
+- **text-generation-webui**: Local web UI with API support
+- **OpenAI API**: Direct OpenAI API (with API key)
 
-Update the configuration in `.env`:
-```
-AI_MODEL_NAME=mistral
-```
+All services must support the `/v1/chat/completions` endpoint format.
 
 ## Configuration
 
 Set these environment variables in `.env`:
 
 ```bash
-# AI Model Service
-AI_MODEL_URL=http://localhost:11434
-AI_MODEL_NAME=llama3.2
+# AI Model Service (Docker Desktop default)
+AI_MODEL_URL=http://localhost:12434
+AI_MODEL_NAME=ai/llama3.2:1B-Q4_0
+LLM_ENGINE=llama.cpp
 ```
 
-## API Endpoints
+**Configuration Parameters:**
+- `AI_MODEL_URL`: Base URL of the AI model service
+- `AI_MODEL_NAME`: Model identifier (varies by service)
+- `LLM_ENGINE`: Engine name used in the API path (e.g., `llama.cpp`, `ollama`)
 
-The Ollama API provides these endpoints:
+## API Endpoint
 
-### Generate Text
+**The system uses the OpenAI-compatible chat completions API:**
+
+### Chat Completion (Used by All Services)
 ```bash
-POST http://localhost:11434/api/generate
+POST {AI_MODEL_URL}/engines/{LLM_ENGINE}/v1/chat/completions
 Content-Type: application/json
 
 {
-  "model": "llama3.2",
-  "prompt": "Your prompt here",
-  "stream": false
-}
-```
-
-### Chat Completion (Alternative)
-```bash
-POST http://localhost:11434/api/chat
-Content-Type: application/json
-
-{
-  "model": "llama3.2",
+  "model": "ai/llama3.2:1B-Q4_0",
   "messages": [
-    {"role": "user", "content": "Your message here"}
-  ],
-  "stream": false
+    {
+      "role": "system",
+      "content": "You are a helpful assistant."
+    },
+    {
+      "role": "user",
+      "content": "Your question here"
+    }
+  ]
 }
 ```
+
+**Response Format:**
+```json
+{
+  "id": "chatcmpl-123",
+  "object": "chat.completion",
+  "created": 1234567890,
+  "model": "ai/llama3.2:1B-Q4_0",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "The assistant's response"
+      },
+      "finish_reason": "stop"
+    }
+  ]
+}
+```
+
+**Note**: The legacy `/api/generate` endpoint is **NOT** used by this system. All services use the OpenAI-compatible format.
 
 ## System Integration
 
-The AI model is used by these services:
+The AI model is used by these services (all using OpenAI-compatible API):
 
 1. **QA Generation Service** (`services/qa_generation/service.py`)
+   - Endpoint: `/engines/{LLM_ENGINE}/v1/chat/completions`
+   - System role: "You are a helpful math teacher creating grade school word problems."
    - Converts equations to natural language questions
    - Falls back to template-based generation if AI is unavailable
 
 2. **Classification Service** (`services/classification/service.py`)
+   - Endpoint: `/engines/{LLM_ENGINE}/v1/chat/completions`
+   - System role: "You are a helpful math classification assistant."
    - Classifies questions into categories
    - Uses rule-based classification as fallback
 
 3. **Agent Service** (`services/agent/service.py`)
+   - Endpoint: `/engines/{LLM_ENGINE}/v1/chat/completions`
+   - System role: "You are a helpful math tutor assistant."
    - Solves math problems with reasoning
    - Can use RAG context for better answers
+
+4. **Teacher Service** (`services/teacher/service.py`)
+   - Endpoint: `/engines/{LLM_ENGINE}/v1/chat/completions`
+   - System role: "You are a patient and encouraging math teacher."
+   - Provides educational feedback for incorrect answers
+   - Falls back to template-based feedback if AI is unavailable
+
+**All services use the same API format for consistency and maintainability.**
 
 ## Troubleshooting
 
@@ -174,48 +208,74 @@ The AI model is used by these services:
 
 If you get connection errors:
 
-1. Check if Ollama is running:
+1. **Check if the AI model service is running:**
    ```bash
+   # For Docker Desktop models (default port 12434)
+   curl http://localhost:12434/engines/llama.cpp/v1/models
+   
+   # For Ollama (default port 11434)
    curl http://localhost:11434/api/version
    ```
 
-2. Check Docker container status:
+2. **Test the chat completions endpoint:**
    ```bash
-   docker ps | grep ollama
-   docker logs ollama
+   curl http://localhost:12434/engines/llama.cpp/v1/chat/completions \
+     -H "Content-Type: application/json" \
+     -d '{
+       "model": "ai/llama3.2:1B-Q4_0",
+       "messages": [{"role": "user", "content": "test"}]
+     }'
    ```
 
-3. Verify port availability:
+3. **Check Docker Desktop status:**
+   - Open Docker Desktop
+   - Navigate to Settings → AI
+   - Verify models are downloaded and running
+   - Check resource allocation (CPU/Memory)
+
+4. **Verify port availability:**
    ```bash
-   netstat -tulpn | grep 11434
+   # Check if port 12434 is in use
+   netstat -tulpn | grep 12434
+   # or
+   lsof -i :12434
+   ```
+
+5. **Review application logs:**
+   ```bash
+   # Check for AI service connection errors
+   grep "AI" app.log
+   grep "timeout" app.log
    ```
 
 ### Performance Optimization
 
 For better performance:
 
-1. **Use GPU acceleration** (if available):
-   ```bash
-   docker run -d --gpus=all -v ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama
-   ```
+1. **Use GPU acceleration** (Docker Desktop):
+   - Enable GPU support in Docker Desktop settings
+   - Allocate sufficient VRAM to Docker
+   - Monitor GPU usage in Docker Desktop dashboard
 
-2. **Adjust model parameters**:
+2. **Adjust model parameters** (optional in request):
    ```json
    {
-     "model": "llama3.2",
-     "prompt": "...",
-     "options": {
-       "temperature": 0.7,
-       "top_p": 0.9,
-       "num_predict": 128
-     }
+     "model": "ai/llama3.2:1B-Q4_0",
+     "messages": [...],
+     "temperature": 0.7,
+     "max_tokens": 256,
+     "top_p": 0.9
    }
    ```
 
-3. **Use smaller models** for faster responses:
-   - `llama3.2:1b` - Smallest, fastest
-   - `llama3.2:3b` - Balanced
-   - `llama3.2` - Best quality (default)
+3. **Use smaller/quantized models** for faster responses:
+   - `ai/llama3.2:1B-Q4_0` - Smallest, fastest (default)
+   - `ai/llama3.2:3B-Q4_0` - Balanced quality/speed
+   - `ai/llama3.2:7B` - Best quality, slower
+
+4. **Connection pooling**: Services automatically reuse connections
+
+5. **Retry logic**: Built-in 3-attempt retry with timeouts (30s default)
 
 ## Graceful Degradation
 

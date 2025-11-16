@@ -6,7 +6,7 @@ Get GradeSchoolMathSolver-RAG up and running in 5 minutes!
 
 Before starting, ensure you have:
 - ✅ Python 3.11 or higher
-- ✅ Docker and Docker Compose
+- ✅ Docker Desktop with AI models feature
 - ✅ 8GB+ RAM available
 - ✅ 10GB+ free disk space
 
@@ -14,105 +14,70 @@ Quick check:
 ```bash
 python3 --version  # Should be 3.11+
 docker --version   # Should be installed
-docker-compose --version  # Should be installed
 ```
 
-## Option 1: Automated Setup (Recommended)
+## Option 1: Docker Desktop AI (Recommended)
 
-### Step 1: Clone and Setup
+### Step 1: Set Up Docker Desktop AI Models
+1. **Install Docker Desktop** from https://www.docker.com/products/docker-desktop
+2. **Enable AI Models**: Open Docker Desktop → Settings → AI
+3. **Download Model**: Select and download LLaMA 3.2 (1B or 3B quantized recommended)
+4. **Verify**: Models should be accessible at `localhost:12434`
+
+Test the AI service:
+```bash
+curl http://localhost:12434/engines/llama.cpp/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "ai/llama3.2:1B-Q4_0",
+    "messages": [{"role": "user", "content": "test"}]
+  }'
+```
+
+### Step 2: Clone and Setup
 ```bash
 git clone https://github.com/yangzq50/GradeSchoolMathSolver-RAG.git
 cd GradeSchoolMathSolver-RAG
-./start.sh
-```
-
-The script will:
-- Create configuration files
-- Start Docker services (Ollama + Elasticsearch)
-- Download LLaMA 3.2 model
-- Install Python dependencies
-- Create default agents
-
-### Step 2: Start the Application
-```bash
-source venv/bin/activate
-python web_ui/app.py
-```
-
-### Step 3: Open Your Browser
-Navigate to: http://localhost:5000
-
-🎉 **You're done!** Start exploring the application.
-
-## Option 2: Manual Setup
-
-### Step 1: Clone Repository
-```bash
-git clone https://github.com/yangzq50/GradeSchoolMathSolver-RAG.git
-cd GradeSchoolMathSolver-RAG
-```
-
-### Step 2: Install Dependencies
-```bash
-pip install -r requirements.txt
 ```
 
 ### Step 3: Configure Environment
 ```bash
 cp .env.example .env
-# Edit .env if needed (default values work for local development)
+# Default .env values are configured for Docker Desktop AI:
+# AI_MODEL_URL=http://localhost:12434
+# AI_MODEL_NAME=ai/llama3.2:1B-Q4_0
+# LLM_ENGINE=llama.cpp
 ```
 
-### Step 4: Start Docker Services
+### Step 4: Start Elasticsearch
 ```bash
 docker-compose up -d
 ```
 
-Wait 30 seconds for services to start.
+Wait 30 seconds for Elasticsearch to start.
 
-### Step 5: Download AI Model
-```bash
-docker exec -it math-solver-ollama ollama pull llama3.2
-```
-
-This may take 5-10 minutes depending on your internet connection.
-
-### Step 6: Initialize System
-```bash
-# Create default agents
-python -c "
-from services.agent_management import AgentManagementService
-mgmt = AgentManagementService()
-mgmt.create_default_agents()
-print('Default agents created!')
-"
-```
-
-### Step 7: Start Web Application
-```bash
-python web_ui/app.py
-```
-
-### Step 8: Access the Application
-Open http://localhost:5000 in your browser.
-
-## Option 3: Minimal Setup (No Docker)
-
-If you can't use Docker, you can run with limited functionality:
-
-### Step 1: Install Python Dependencies
+### Step 5: Install Python Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### Step 2: Configure for Local Mode
+### Step 6: Start Web Application
 ```bash
-cp .env.example .env
-# Edit .env and set:
-# AI_MODEL_URL=http://localhost:11434
+python -m web_ui.app
 ```
 
-### Step 3: Install Ollama Locally
+### Step 7: Access the Application
+Open http://localhost:5000 in your browser.
+
+🎉 **You're done!** Start exploring the application.
+
+## Option 2: Alternative AI Services
+
+### Using Local Ollama
+
+If you prefer Ollama over Docker Desktop AI:
+
+### Step 1: Install Ollama
 ```bash
 # macOS
 brew install ollama
@@ -123,19 +88,52 @@ curl https://ollama.ai/install.sh | sh
 # Windows: Download from https://ollama.ai/download
 ```
 
-### Step 4: Start Ollama
+### Step 2: Start Ollama and Download Model
 ```bash
-ollama serve
-```
+ollama serve  # In one terminal
 
-In another terminal:
-```bash
+# In another terminal:
 ollama pull llama3.2
 ```
 
-### Step 5: Run Application
+### Step 3: Update Configuration
+Edit `.env`:
 ```bash
-python web_ui/app.py
+AI_MODEL_URL=http://localhost:11434
+AI_MODEL_NAME=llama3.2
+LLM_ENGINE=ollama
+```
+
+### Step 4: Start Elasticsearch and Application
+```bash
+docker-compose up -d  # Only starts Elasticsearch
+pip install -r requirements.txt
+python -m web_ui.app
+```
+
+**Note**: Without Elasticsearch, RAG features will be limited but the system will still work.
+
+## Option 3: Minimal Setup (No Docker)
+
+If you can't use Docker at all, you can run with limited functionality:
+
+### Step 1: Install AI Service Locally
+Set up Docker Desktop AI or Ollama as described above.
+
+### Step 2: Install Python Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### Step 3: Configure for No-Docker Mode
+```bash
+cp .env.example .env
+# Ensure AI_MODEL_URL points to your local AI service
+```
+
+### Step 4: Run Application
+```bash
+python -m web_ui.app
 ```
 
 **Note**: Without Elasticsearch, RAG features will be disabled.
@@ -185,12 +183,23 @@ You should see:
 
 ## Troubleshooting
 
+### AI Service Not Responding
+
+Check if AI service is running:
+```bash
+# For Docker Desktop AI (port 12434)
+curl http://localhost:12434/engines/llama.cpp/v1/models
+
+# For Ollama (port 11434)
+curl http://localhost:11434/api/version
+```
+
 ### Docker Services Won't Start
 
 Check if ports are already in use:
 ```bash
-# Check port 11434 (Ollama)
-lsof -i :11434
+# Check port 12434 (Docker Desktop AI)
+lsof -i :12434
 
 # Check port 9200 (Elasticsearch)
 lsof -i :9200
@@ -199,60 +208,31 @@ lsof -i :9200
 lsof -i :5000
 ```
 
-Stop conflicting services or change ports in `docker-compose.yml`.
+Stop conflicting services or change ports in configuration.
 
-### AI Model Download Fails
-
-If `ollama pull llama3.2` fails:
-1. Check your internet connection
-2. Try a smaller model: `ollama pull llama3.2:1b`
-3. Check Ollama logs: `docker logs math-solver-ollama`
-
-### Elasticsearch Won't Start
-
-If you have less than 8GB RAM:
-1. Edit `docker-compose.yml`
-2. Reduce ES memory: `ES_JAVA_OPTS=-Xms256m -Xmx256m`
-3. Restart: `docker-compose restart elasticsearch`
-
-### Web UI Shows Errors
-
-Check the console output for specific errors. Common issues:
-- Database permissions: Ensure `data/` directory is writable
-- Missing dependencies: Run `pip install -r requirements.txt`
-- Config errors: Verify `.env` file exists and is valid
-
-### Question Generation Is Slow
+### AI Model Responses Are Slow
 
 This is normal on first run. The AI model needs to warm up. Subsequent questions will be faster.
 
 To speed up:
-1. Use a smaller model: `llama3.2:1b`
-2. Reduce question complexity
-3. Enable GPU acceleration (if available)
+1. Use Docker Desktop AI with GPU support enabled
+2. Use a smaller/quantized model: `ai/llama3.2:1B-Q4_0`
+3. Reduce question complexity
+4. Ensure adequate system resources (CPU/RAM)
 
 ## Configuration Tips
 
-### Use GPU Acceleration
+### Use GPU Acceleration (Docker Desktop)
 
-If you have an NVIDIA GPU:
-
-Edit `docker-compose.yml`:
-```yaml
-ollama:
-  image: ollama/ollama
-  deploy:
-    resources:
-      reservations:
-        devices:
-          - driver: nvidia
-            count: 1
-            capabilities: [gpu]
-```
+Enable GPU in Docker Desktop settings:
+1. Open Docker Desktop → Settings → Resources
+2. Enable "Use GPU" if available
+3. Allocate sufficient GPU memory
+4. Restart Docker Desktop
 
 ### Customize Question Difficulty
 
-Edit `config.py` to adjust number ranges:
+Edit `services/qa_generation/service.py` to adjust number ranges:
 ```python
 # Make easy questions easier
 def _generate_easy_equation(self):
