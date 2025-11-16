@@ -10,9 +10,9 @@ An AI-powered Grade School Math Solver with RAG (Retrieval-Augmented Generation)
 - **Question Classification**: Categorize questions by type (addition, subtraction, multiplication, etc.)
 - **User Management**: Track user progress, answer history, and performance statistics
 - **Quiz History with RAG**: Store and retrieve similar questions using Elasticsearch for personalized learning
-- **Intelligent RAG bots**: Configurable agents that can use classification and RAG for better problem-solving
+- **Intelligent RAG bots**: Configurable RAG bots that can use classification and RAG for better problem-solving
 - **Web Interface**: User-friendly Flask-based web UI for taking exams and viewing statistics
-- **Agent Management**: Create and test different RAG bot configurations
+- **RAG Bot Management**: Create and test different RAG bot configurations
 - **Performance Tracking**: Monitor correctness rates, recent performance, and trends
 - **🆕 Immersive Exams**: Synchronized exams where all participants answer the same questions with optional answer reveal strategies
 - **🆕 Teacher Service**: Optional educational feedback for wrong answers to help users learn from mistakes
@@ -23,8 +23,9 @@ An AI-powered Grade School Math Solver with RAG (Retrieval-Augmented Generation)
 The system consists of 12 main components:
 
 ### 0. AI Model Service
-- Deployed using Docker with Ollama running LLaMA 3.2
+- Uses Docker Desktop models via localhost endpoint (port 12434)
 - Provides natural language generation for questions and reasoning
+- OpenAI-compatible chat/completions API format
 - See [AI Model Service Documentation](docs/AI_MODEL_SERVICE.md)
 
 ### 1. QA Generation Service
@@ -67,7 +68,7 @@ The system consists of 12 main components:
 - AI-based explanations with template fallback
 - Step-by-step guidance for correct solutions
 - Toggle-able via configuration
-- Only active for human users (not agents)
+- Only active for human users (not RAG bots)
 
 ### 8. Mistake Review Service (NEW)
 - Allows users to review past incorrect answers
@@ -81,27 +82,28 @@ The system consists of 12 main components:
 - User dashboard with statistics and trends
 - Interactive exam interface
 - Immersive exam creation and participation
-- Agent testing and management
+- RAG bot testing and management
 - Teacher feedback display
 - Mistake review interface
 
 ### 10. RAG Bot Service
-- Configurable problem-solving agents
+- Configurable problem-solving RAG bots
 - Optional question classification
 - Optional RAG from quiz history
 - Provides reasoning for answers
 
-### 11. Agent Management Service
-- Create, update, and delete agent configurations
-- Pre-configured default agents
-- Test agents with different settings
+### 11. RAG Bot Management Service
+- Create, update, and delete RAG bot configurations
+- Pre-configured default RAG bots
+- Test RAG bots with different settings
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 - Python 3.11+
-- Docker (for AI model and Elasticsearch)
+- Docker (for Elasticsearch)
+- Docker Desktop with AI models (for LLM service via localhost:12434)
 - 8GB+ RAM recommended
 
 ### Installation
@@ -121,17 +123,22 @@ The system consists of 12 main components:
    ```bash
    cp .env.example .env
    # Edit .env with your configuration
+   # AI_MODEL_URL should point to your Docker Desktop models endpoint (e.g., http://localhost:12434)
+   # AI_MODEL_NAME should be your model name (e.g., ai/llama3.2:1B-Q4_0)
+   # LLM_ENGINE should be your engine (e.g., llama.cpp)
    ```
 
-4. **Start infrastructure with Docker Compose**
+4. **Set up Docker Desktop AI Models**
+   - Ensure Docker Desktop is running with AI models enabled
+   - The models should be accessible at localhost:12434 (or your configured port)
+   - Example model: `ai/llama3.2:1B-Q4_0`
+
+5. **Start infrastructure with Docker Compose**
    ```bash
    docker-compose up -d
    ```
-
-5. **Pull the AI model**
-   ```bash
-   docker exec -it math-solver-ollama ollama pull llama3.2
-   ```
+   
+   Note: This only starts Elasticsearch. The LLM service runs via Docker Desktop models on your localhost.
 
 6. **Run the web application**
    
@@ -151,9 +158,9 @@ The system consists of 12 main components:
 
 If you prefer to run everything locally:
 
-1. **Install Ollama** (see [AI Model Service docs](docs/AI_MODEL_SERVICE.md))
+1. **Set up LLM service** - Use any OpenAI-compatible API endpoint
 2. **Install and run Elasticsearch**
-3. **Update .env** with local URLs
+3. **Update .env** with your LLM endpoint and Elasticsearch URLs
 4. **Run the web application**
 
 ## 📖 Usage
@@ -219,19 +226,19 @@ The mistake review feature allows you to learn from your past errors:
    - Add human users by username
    - Add RAG bots from the dropdown
 7. Click "Start Exam" when all participants are registered
-8. Participants join using their username/agent name
+8. Participants join using their username or RAG bot name
 9. Answer questions in synchronized order
 10. View final results with leaderboard
 
 ### Testing a RAG Bot
 
-1. Navigate to the "Agents" page
-2. Select an agent configuration
+1. Navigate to the "RAG Bots" page
+2. Select a RAG bot configuration
 3. Set test parameters (difficulty, question count)
 4. Run the test
-5. Review agent performance and reasoning
+5. Review RAG bot performance and reasoning
 
-### Creating a Custom Agent
+### Creating a Custom RAG Bot
 
 ```python
 from models import AgentConfig
@@ -240,16 +247,16 @@ from services.agent_management import AgentManagementService
 # Create agent management service
 agent_mgmt = AgentManagementService()
 
-# Define custom agent
+# Define custom RAG bot
 custom_agent = AgentConfig(
-    name="my_custom_agent",
+    name="my_custom_bot",
     use_classification=True,
     use_rag=True,
     rag_top_k=3,
     include_incorrect_history=True
 )
 
-# Create agent
+# Create RAG bot
 agent_mgmt.create_agent(custom_agent)
 ```
 
@@ -379,9 +386,9 @@ python tests/test_mistake_review.py
 
 ## 🔧 Configuration
 
-### Default Agents
+### Default RAG Bots
 
-The system creates these default agents:
+The system creates these default RAG bots:
 
 1. **basic_agent**: Simple AI without classification or RAG
 2. **classifier_agent**: Uses classification but no RAG
@@ -393,8 +400,9 @@ The system creates these default agents:
 See `.env.example` for all available configuration options.
 
 Key settings:
-- `AI_MODEL_URL`: URL of the AI model service
-- `AI_MODEL_NAME`: Name of the model to use (e.g., llama3.2)
+- `AI_MODEL_URL`: URL of the AI model service (e.g., http://localhost:12434)
+- `AI_MODEL_NAME`: Name of the model to use (e.g., ai/llama3.2:1B-Q4_0)
+- `LLM_ENGINE`: LLM engine to use (e.g., llama.cpp)
 - `ELASTICSEARCH_HOST`: Elasticsearch hostname
 - `DATABASE_PATH`: Path to SQLite database
 - `TEACHER_SERVICE_ENABLED`: Enable/disable teacher feedback (default: True)
@@ -414,7 +422,7 @@ TEACHER_SERVICE_ENABLED=False
 When enabled, the service provides:
 - AI-generated explanations when AI model is available
 - Template-based fallback explanations when AI is unavailable
-- Feedback only for human users (not agents)
+- Feedback only for human users (not RAG bots)
 - No performance impact on correct answers
 
 ## 📊 System Flow
@@ -503,9 +511,10 @@ If you get errors like `ModuleNotFoundError: No module named 'config'`, `'models
 
 ### AI Model Not Responding
 
-1. Check if Ollama is running: `docker ps | grep ollama`
-2. Test the API: `curl http://localhost:11434/api/version`
-3. Check logs: `docker logs math-solver-ollama`
+1. Check if Docker Desktop models are running and accessible
+2. Test the API: `curl http://localhost:12434/engines/llama.cpp/v1/models`
+3. Verify your AI_MODEL_URL, AI_MODEL_NAME, and LLM_ENGINE environment variables are correct
+4. Check that the model is available in Docker Desktop
 
 ### Elasticsearch Connection Issues
 
