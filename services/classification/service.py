@@ -105,23 +105,34 @@ Equation: {equation}
 Respond with ONLY the category name, nothing else."""
 
         try:
+            # Use OpenAI-compatible chat/completions API
             response = requests.post(
-                f"{self.config.AI_MODEL_URL}/api/generate",
+                f"{self.config.AI_MODEL_URL}/engines/{self.config.LLM_ENGINE}/v1/chat/completions",
                 json={
                     "model": self.config.AI_MODEL_NAME,
-                    "prompt": prompt,
-                    "stream": False
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a helpful math classification assistant."
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
                 },
                 timeout=self.timeout
             )
 
             if response.status_code == 200:
                 result = response.json()
-                category = result.get('response', '').strip().lower()
-
-                # Validate the category
-                if category in self.categories:
-                    return category
+                # Extract content from OpenAI-compatible response
+                choices = result.get('choices', [])
+                if choices:
+                    category = choices[0].get('message', {}).get('content', '').strip().lower()
+                    # Validate the category
+                    if category in self.categories:
+                        return category
 
         except Timeout:
             print("Timeout classifying with AI, falling back to rule-based")
