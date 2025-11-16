@@ -15,7 +15,7 @@ services:
 
   # Elasticsearch for Quiz History
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    image: elasticsearch:9.2.1
     container_name: math-solver-elasticsearch
     environment:
       - discovery.type=single-node

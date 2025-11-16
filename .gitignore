@@ -210,3 +210,6 @@ __marimo__/
 data/*.db
 data/*.db-journal
 data/agents/*.json
+
+# IDE
+/.idea/

@@ -24,4 +24,4 @@ RUN mkdir -p /app/data
 EXPOSE 5000
 
 # Run the application
-CMD ["python", "web_ui/app.py"]
+CMD ["python", "-m", "web_ui.app"]
