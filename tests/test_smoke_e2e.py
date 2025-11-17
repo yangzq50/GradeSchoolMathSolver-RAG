@@ -11,13 +11,12 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-@patch('services.account.service.Elasticsearch')
-@patch('services.quiz_history.service.Elasticsearch')
+@patch('services.database.elasticsearch_backend.Elasticsearch')
 @patch('services.qa_generation.service.requests.post')
-def test_full_exam_flow_with_mocked_external_services(mock_requests_post, mock_elasticsearch_quiz, mock_elasticsearch_account):
+def test_full_exam_flow_with_mocked_external_services(mock_requests_post, mock_elasticsearch):
     """
     End-to-end smoke test: Generate questions, take exam, process results
-    with Elasticsearch and AI Model service mocked
+    with Database and AI Model service mocked
     """
     from services.exam import ExamService
     from models import ExamRequest
@@ -30,7 +29,7 @@ def test_full_exam_flow_with_mocked_external_services(mock_requests_post, mock_e
     mock_es_instance = MagicMock()
     mock_es_instance.ping.return_value = True
     mock_es_instance.indices.exists.return_value = True
-    mock_es_instance.index.return_value = {"result": "created"}
+    mock_es_instance.index.return_value = {"result": "created", "_id": "test_id"}
 
     def mock_create(index, id, document, **kwargs):
         if index == "users":
@@ -53,9 +52,10 @@ def test_full_exam_flow_with_mocked_external_services(mock_requests_post, mock_e
     indexed_records = []
 
     def mock_index(index, document, **kwargs):
+        doc_with_id = document.copy()
         if index == "quiz_history":
-            indexed_records.append(document)
-        return {"result": "created"}
+            indexed_records.append(doc_with_id)
+        return {"result": "created", "_id": f"doc_{len(indexed_records)}"}
 
     mock_es_instance.index.side_effect = mock_index
 
@@ -76,8 +76,22 @@ def test_full_exam_flow_with_mocked_external_services(mock_requests_post, mock_e
         return {"hits": {"hits": []}}
 
     mock_es_instance.search.side_effect = mock_search
-    mock_elasticsearch_quiz.return_value = mock_es_instance
-    mock_elasticsearch_account.return_value = mock_es_instance
+    
+    # Mock count to return number of indexed records
+    def mock_count(index, body, **kwargs):
+        return {"count": len(indexed_records)}
+    
+    mock_es_instance.count.side_effect = mock_count
+    
+    # Mock indices.refresh for testing
+    mock_es_instance.indices.refresh = MagicMock()
+    mock_es_instance.indices.create = MagicMock()
+    
+    mock_elasticsearch.return_value = mock_es_instance
+
+    # Reset global database service to ensure fresh initialization
+    from services.database import service as db_service_module
+    db_service_module._db_service = None
 
     # Mock AI model API to return a simple question text
     mock_response = MagicMock()
@@ -129,8 +143,10 @@ def test_full_exam_flow_with_mocked_external_services(mock_requests_post, mock_e
     assert results["results"][2]["is_correct"] is True, "Third answer should be correct"
 
     # Refresh the index to make documents searchable (for testing)
-    if service.account_service.es:
-        service.account_service.es.indices.refresh(index=service.account_service.answers_index)
+    if service.account_service._is_connected():
+        from services.database.elasticsearch_backend import ElasticsearchDatabaseService
+        if isinstance(service.account_service.db, ElasticsearchDatabaseService):
+            service.account_service.db.refresh_index(service.account_service.answers_index)
 
     # Step 4: Verify user stats were updated
     user_stats = service.account_service.get_user_stats("smoke_test_user")
@@ -140,7 +156,7 @@ def test_full_exam_flow_with_mocked_external_services(mock_requests_post, mock_e
     print("✅ End-to-end smoke test: Full exam flow works with mocked services")
 
 
-@patch('services.quiz_history.service.Elasticsearch')
+@patch('services.database.elasticsearch_backend.Elasticsearch')
 def test_exam_flow_without_ai_model(mock_elasticsearch):
     """
     Test that exam flow works even when AI model is unavailable
@@ -181,7 +197,7 @@ def test_exam_flow_without_ai_model(mock_elasticsearch):
     print("✅ End-to-end smoke test: Works without AI model service")
 
 
-@patch('services.quiz_history.service.Elasticsearch')
+@patch('services.database.elasticsearch_backend.Elasticsearch')
 def test_exam_flow_without_elasticsearch(mock_elasticsearch):
     """
     Test that exam flow works when Elasticsearch is unavailable
@@ -216,7 +232,7 @@ def test_exam_flow_without_elasticsearch(mock_elasticsearch):
     print("✅ End-to-end smoke test: Works without Elasticsearch")
 
 
-@patch('services.quiz_history.service.Elasticsearch')
+@patch('services.database.elasticsearch_backend.Elasticsearch')
 @patch('services.qa_generation.service.requests.post')
 def test_classification_integration(mock_requests_post, mock_elasticsearch):
     """

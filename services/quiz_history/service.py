@@ -1,82 +1,45 @@
 """
 Quiz History Service
-Manages quiz history using Elasticsearch for RAG (Retrieval-Augmented Generation)
+Manages quiz history using centralized database service for RAG (Retrieval-Augmented Generation)
 
 This service provides:
-- Storage of question-answer pairs in Elasticsearch
+- Storage of question-answer pairs
 - Similarity-based search for relevant historical questions
 - User history retrieval
-- Graceful degradation when Elasticsearch is unavailable
+- Graceful degradation when database is unavailable
 """
 from datetime import datetime
 from typing import List, Optional, Dict, Any
-from elasticsearch import Elasticsearch, ConnectionError as ESConnectionError
 from config import Config
 from models import QuizHistory
+from services.database import get_database_service
 
 
 class QuizHistoryService:
     """
-    Service for managing quiz history with Elasticsearch
+    Service for managing quiz history with centralized database service
 
     This service handles quiz history storage and retrieval for RAG functionality.
-    It gracefully degrades to limited mode when Elasticsearch is unavailable.
+    It gracefully degrades to limited mode when database is unavailable.
 
     Attributes:
         config: Configuration object
-        index_name: Name of the Elasticsearch index
-        es: Elasticsearch client (None if disconnected)
+        index_name: Name of the database index
+        db: DatabaseService instance for data operations
     """
 
     def __init__(self):
         self.config = Config()
         self.index_name = self.config.ELASTICSEARCH_INDEX
-        self.es: Optional[Elasticsearch] = None
-        self._connect()
-
-    def _connect(self):
-        """
-        Connect to Elasticsearch and create index if needed
-
-        Gracefully handles connection failures by operating in limited mode.
-        """
-        try:
-            # Elasticsearch 9.x uses URL-based initialization
-            es_url = f"http://{self.config.ELASTICSEARCH_HOST}:{self.config.ELASTICSEARCH_PORT}"
-            self.es = Elasticsearch(
-                [es_url],
-                request_timeout=10,
-                max_retries=3,
-                retry_on_timeout=True
-            )
-
-            # Verify connection
-            if not self.es.ping():
-                print("Warning: Elasticsearch ping failed")
-                self.es = None
-                return
-
-            # Create index if it doesn't exist
-            if not self.es.indices.exists(index=self.index_name):
-                self._create_index()
-        except ESConnectionError as e:
-            print(f"Warning: Could not connect to Elasticsearch: {e}")
-            print("Quiz history service will operate in limited mode")
-            self.es = None
-        except Exception as e:
-            print(f"Warning: Unexpected error connecting to Elasticsearch: {e}")
-            print("Quiz history service will operate in limited mode")
-            self.es = None
+        self.db = get_database_service()
+        self._create_index()
 
     def _create_index(self):
         """
-        Create Elasticsearch index with appropriate mappings
+        Create database index with appropriate mappings
 
         Defines unified schema for efficient storage and retrieval of quiz history.
         """
-        if not self.es:
-            return
-
         mapping = {
             "mappings": {
                 "properties": {
@@ -94,23 +57,19 @@ class QuizHistoryService:
             }
         }
 
-        try:
-            self.es.indices.create(index=self.index_name, body=mapping)
-            print(f"Created Elasticsearch index: {self.index_name}")
-        except Exception as e:
-            print(f"Error creating index (may already exist): {e}")
+        self.db.create_index(self.index_name, mapping)
 
     def add_history(self, history: QuizHistory) -> bool:
         """
-        Add a quiz history record to Elasticsearch
+        Add a quiz history record to database
 
         Args:
             history: QuizHistory object to store
 
         Returns:
-            True if successful, False if Elasticsearch unavailable or error occurs
+            True if successful, False if database unavailable or error occurs
         """
-        if not self.es:
+        if not self.db.is_connected():
             return False
 
         try:
@@ -127,11 +86,8 @@ class QuizHistoryService:
                 "reviewed": False  # Default value for new records
             }
 
-            self.es.index(index=self.index_name, document=doc)
-            return True
-        except ESConnectionError as e:
-            print(f"Connection error adding history: {e}")
-            return False
+            doc_id = self.db.index_document(self.index_name, doc)
+            return doc_id is not None
         except Exception as e:
             print(f"Error adding history: {e}")
             return False
@@ -142,7 +98,7 @@ class QuizHistoryService:
         """
         Search for relevant quiz history using semantic similarity
 
-        Uses Elasticsearch's text matching to find similar questions from
+        Uses database text matching to find similar questions from
         the user's history, optionally filtered by category.
 
         Args:
@@ -154,14 +110,14 @@ class QuizHistoryService:
         Returns:
             List of relevant history records with scores, empty if unavailable
         """
-        if not self.es:
+        if not self.db.is_connected():
             return []
 
         # Validate and clamp top_k
         top_k = max(1, min(top_k, 20))
 
         try:
-            # Build query
+            # Build query - this is Elasticsearch-specific but abstracted in the future
             must_clauses = [
                 {"match": {"username": username}}
             ]
@@ -175,23 +131,27 @@ class QuizHistoryService:
                 must_clauses.append({"term": {"category": category}})
 
             query = {
-                "size": top_k,
-                "query": {
-                    "bool": {
-                        "must": must_clauses,
-                        "should": should_clauses
-                    }
-                },
-                "sort": [
-                    {"_score": {"order": "desc"}},
-                    {"timestamp": {"order": "desc"}}
-                ]
+                "bool": {
+                    "must": must_clauses,
+                    "should": should_clauses
+                }
             }
 
-            response = self.es.search(index=self.index_name, body=query)
+            sort = [
+                {"_score": {"order": "desc"}},
+                {"timestamp": {"order": "desc"}}
+            ]
+
+            # Use database service search
+            hits = self.db.search_documents(
+                index_name=self.index_name,
+                query=query,
+                sort=sort,
+                size=top_k
+            )
 
             results = []
-            for hit in response['hits']['hits']:
+            for hit in hits:
                 source = hit['_source']
                 results.append({
                     'question': source.get('question'),
@@ -201,13 +161,10 @@ class QuizHistoryService:
                     'is_correct': source.get('is_correct'),
                     'category': source.get('category'),
                     'timestamp': source.get('timestamp'),
-                    'score': hit['_score']
+                    'score': hit.get('_score', 0)
                 })
 
             return results
-        except ESConnectionError as e:
-            print(f"Connection error searching history: {e}")
-            return []
         except Exception as e:
             print(f"Error searching history: {e}")
             return []
@@ -223,49 +180,41 @@ class QuizHistoryService:
         Returns:
             List of history records sorted by timestamp, empty if unavailable
         """
-        if not self.es:
+        if not self.db.is_connected():
             return []
 
         # Validate and clamp limit
         limit = max(1, min(limit, 1000))
 
         try:
-            query = {
-                "size": limit,
-                "query": {
-                    "match": {"username": username}
-                },
-                "sort": [
-                    {"timestamp": {"order": "desc"}}
-                ]
-            }
+            query = {"match": {"username": username}}
+            sort = [{"timestamp": {"order": "desc"}}]
 
-            response = self.es.search(index=self.index_name, body=query)
+            hits = self.db.search_documents(
+                index_name=self.index_name,
+                query=query,
+                sort=sort,
+                size=limit
+            )
 
             results = []
-            for hit in response['hits']['hits']:
+            for hit in hits:
                 source = hit['_source']
                 results.append(source)
 
             return results
-        except ESConnectionError as e:
-            print(f"Connection error getting user history: {e}")
-            return []
         except Exception as e:
             print(f"Error getting user history: {e}")
             return []
 
     def is_connected(self) -> bool:
         """
-        Check if Elasticsearch is connected and responsive
+        Check if database is connected and responsive
 
         Returns:
             True if connected and responsive, False otherwise
         """
-        try:
-            return self.es is not None and self.es.ping()
-        except Exception:
-            return False
+        return self.db.is_connected()
 
 
 if __name__ == "__main__":

@@ -19,9 +19,9 @@ def test_mistake_review_service():
     account_service = AccountService()
     mistake_service = MistakeReviewService()
 
-    # Skip if Elasticsearch is not available
-    if not account_service.es:
-        pytest.skip("Elasticsearch not available")
+    # Skip if database is not available
+    if not account_service._is_connected():
+        pytest.skip("Database not available")
 
     # Create test user with unique name
     username = f"test_mistake_{random.randint(1000, 9999)}"

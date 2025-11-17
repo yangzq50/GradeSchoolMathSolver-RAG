@@ -30,34 +30,33 @@ class MistakeReviewService:
         Returns:
             MistakeReview object or None if no unreviewed mistakes exist
         """
-        if not self.account_service.es:
+        if not self.account_service._is_connected():
             return None
 
         try:
             # Query for oldest unreviewed incorrect answer
             query = {
-                "size": 1,
-                "query": {
-                    "bool": {
-                        "must": [
-                            {"term": {"username": username}},
-                            {"term": {"is_correct": False}},
-                            {"term": {"reviewed": False}}
-                        ]
-                    }
-                },
-                "sort": [{"timestamp": {"order": "asc"}}]
+                "bool": {
+                    "must": [
+                        {"term": {"username": username}},
+                        {"term": {"is_correct": False}},
+                        {"term": {"reviewed": False}}
+                    ]
+                }
             }
+            sort = [{"timestamp": {"order": "asc"}}]
 
-            response = self.account_service.es.search(
-                index=self.account_service.answers_index,
-                body=query
+            hits = self.account_service.db.search_documents(
+                index_name=self.account_service.answers_index,
+                query=query,
+                sort=sort,
+                size=1
             )
 
-            if not response['hits']['hits']:
+            if not hits:
                 return None
 
-            hit = response['hits']['hits'][0]
+            hit = hits[0]
             source = hit['_source']
 
             return MistakeReview(
@@ -87,31 +86,33 @@ class MistakeReviewService:
         Returns:
             True if successful, False otherwise
         """
-        if not self.account_service.es:
+        if not self.account_service._is_connected():
             return False
 
         try:
             # Get the document first to verify username matches
-            result = self.account_service.es.get(
-                index=self.account_service.answers_index,
-                id=mistake_id
+            doc = self.account_service.db.get_document(
+                self.account_service.answers_index,
+                mistake_id
             )
 
-            if result['_source']['username'] != username:
+            if not doc or doc['username'] != username:
                 return False
 
             # Update the document
-            self.account_service.es.update(
-                index=self.account_service.answers_index,
-                id=mistake_id,
-                body={"doc": {"reviewed": True}}
+            success = self.account_service.db.update_document(
+                self.account_service.answers_index,
+                mistake_id,
+                {"reviewed": True}
             )
 
             # Refresh index if requested (useful for testing)
-            if refresh and self.account_service.es:
-                self.account_service.es.indices.refresh(index=self.account_service.answers_index)
+            if refresh and success:
+                from services.database.elasticsearch_backend import ElasticsearchDatabaseService
+                if isinstance(self.account_service.db, ElasticsearchDatabaseService):
+                    self.account_service.db.refresh_index(self.account_service.answers_index)
 
-            return True
+            return success
         except Exception as e:
             print(f"Error marking mistake as reviewed: {e}")
             return False
@@ -126,27 +127,24 @@ class MistakeReviewService:
         Returns:
             Count of unreviewed mistakes
         """
-        if not self.account_service.es:
+        if not self.account_service._is_connected():
             return 0
 
         try:
             query = {
-                "query": {
-                    "bool": {
-                        "must": [
-                            {"term": {"username": username}},
-                            {"term": {"is_correct": False}},
-                            {"term": {"reviewed": False}}
-                        ]
-                    }
+                "bool": {
+                    "must": [
+                        {"term": {"username": username}},
+                        {"term": {"is_correct": False}},
+                        {"term": {"reviewed": False}}
+                    ]
                 }
             }
 
-            response = self.account_service.es.count(
-                index=self.account_service.answers_index,
-                body=query
+            return self.account_service.db.count_documents(
+                self.account_service.answers_index,
+                query
             )
-            return response['count']
         except Exception as e:
             print(f"Error getting unreviewed count: {e}")
             return 0

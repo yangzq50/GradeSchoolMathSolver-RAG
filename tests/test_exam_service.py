@@ -149,9 +149,9 @@ def test_exam_service_creates_user_if_not_exists():
     import pytest
     service = ExamService()
 
-    # Skip if Elasticsearch is not available
-    if not service.account_service.es:
-        pytest.skip("Elasticsearch not available")
+    # Skip if database is not available
+    if not service.account_service._is_connected():
+        pytest.skip("Database not available")
 
     import random
     username = f"new_user_{random.randint(10000, 99999)}"

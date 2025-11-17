@@ -1,12 +1,12 @@
 """
 Account Service
-Manages user accounts and statistics using Elasticsearch with proper error handling and validation
+Manages user accounts and statistics using centralized database service
 """
 from datetime import datetime
 from typing import List, Optional, Dict, Any
-from elasticsearch import Elasticsearch, ConnectionError as ESConnectionError, NotFoundError, ConflictError
 from config import Config
 from models import UserStats
+from services.database import get_database_service
 
 
 class AccountService:
@@ -17,64 +17,37 @@ class AccountService:
     - User creation and management
     - Answer history tracking
     - Performance statistics calculation
-    - Elasticsearch connection management
+    - Database connection management through DatabaseService
 
     Attributes:
         config: Configuration object
-        es: Elasticsearch client (None if disconnected)
-        users_index: Name of the Elasticsearch users index
-        answers_index: Name of the Elasticsearch answers index
+        db: DatabaseService instance for data operations
+        users_index: Name of the users index
+        answers_index: Name of the answers index
     """
 
     def __init__(self):
         self.config = Config()
         self.users_index = "users"
         self.answers_index = self.config.ELASTICSEARCH_INDEX
-        self.es: Optional[Elasticsearch] = None
-        self._connect()
+        self.db = get_database_service()
+        self._create_indices()
 
-    def _connect(self):
+    def _is_connected(self) -> bool:
         """
-        Connect to Elasticsearch and create indices if needed
+        Check if database is connected
 
-        Gracefully handles connection failures by operating in limited mode.
+        Returns:
+            bool: True if connected, False otherwise
         """
-        try:
-            # Elasticsearch 9.x uses URL-based initialization
-            es_url = f"http://{self.config.ELASTICSEARCH_HOST}:{self.config.ELASTICSEARCH_PORT}"
-            self.es = Elasticsearch(
-                [es_url],
-                request_timeout=10,
-                max_retries=3,
-                retry_on_timeout=True
-            )
-
-            # Verify connection
-            if not self.es.ping():
-                print("Warning: Elasticsearch ping failed")
-                self.es = None
-                return
-
-            # Create indices if they don't exist
-            self._create_indices()
-        except ESConnectionError as e:
-            print(f"Warning: Could not connect to Elasticsearch: {e}")
-            print("Account service will operate in limited mode")
-            self.es = None
-        except Exception as e:
-            print(f"Warning: Unexpected error connecting to Elasticsearch: {e}")
-            print("Account service will operate in limited mode")
-            self.es = None
+        return self.db.is_connected()
 
     def _create_indices(self):
         """
-        Create Elasticsearch indices with appropriate mappings
+        Create database indices with appropriate mappings
 
         Defines schema for efficient storage and retrieval of user data and answer history.
         """
-        if not self.es:
-            return
-
         # Users index mapping
         users_mapping = {
             "mappings": {
@@ -102,21 +75,9 @@ class AccountService:
             }
         }
 
-        try:
-            # Create users index
-            if not self.es.indices.exists(index=self.users_index):
-                self.es.indices.create(index=self.users_index, body=users_mapping)
-                print(f"Created Elasticsearch index: {self.users_index}")
-        except Exception as e:
-            print(f"Error creating users index (may already exist): {e}")
-
-        try:
-            # Create answers index
-            if not self.es.indices.exists(index=self.answers_index):
-                self.es.indices.create(index=self.answers_index, body=answers_mapping)
-                print(f"Created Elasticsearch index: {self.answers_index}")
-        except Exception as e:
-            print(f"Error creating answers index (may already exist): {e}")
+        # Create indices using database service
+        self.db.create_index(self.users_index, users_mapping)
+        self.db.create_index(self.answers_index, answers_mapping)
 
     def _validate_username(self, username: str) -> bool:
         """
@@ -149,8 +110,8 @@ class AccountService:
             print(f"Invalid username format: {username}")
             return False
 
-        if not self.es:
-            print("Elasticsearch not connected")
+        if not self._is_connected():
+            print("Database not connected")
             return False
 
         try:
@@ -160,16 +121,8 @@ class AccountService:
                 "created_at": datetime.utcnow().isoformat()
             }
 
-            # Use create() instead of index() to ensure it fails if user exists
-            self.es.create(index=self.users_index, id=username, document=doc)
-            return True
-        except ConflictError:
-            # User already exists
-            print(f"User already exists: {username}")
-            return False
-        except ESConnectionError as e:
-            print(f"Connection error creating user: {e}")
-            return False
+            # Use create_document() which ensures it fails if user exists
+            return self.db.create_document(self.users_index, username, doc)
         except Exception as e:
             print(f"Unexpected error creating user: {e}")
             return False
@@ -187,20 +140,10 @@ class AccountService:
         if not self._validate_username(username):
             return None
 
-        if not self.es:
+        if not self._is_connected():
             return None
 
-        try:
-            result = self.es.get(index=self.users_index, id=username)
-            return result['_source']
-        except NotFoundError:
-            return None
-        except ESConnectionError as e:
-            print(f"Connection error retrieving user: {e}")
-            return None
-        except Exception as e:
-            print(f"Error retrieving user: {e}")
-            return None
+        return self.db.get_document(self.users_index, username)
 
     def list_users(self) -> List[str]:
         """
@@ -209,23 +152,16 @@ class AccountService:
         Returns:
             List of usernames, empty list on error
         """
-        if not self.es:
+        if not self._is_connected():
             return []
 
         try:
-            # Use scroll API for potentially large result sets
-            query = {
-                "size": 1000,
-                "query": {"match_all": {}},
-                "_source": ["username"]
-            }
-
-            response = self.es.search(index=self.users_index, body=query)
-            users = [hit['_source']['username'] for hit in response['hits']['hits']]
+            results = self.db.search_documents(
+                index_name=self.users_index,
+                size=1000
+            )
+            users = [hit['_source']['username'] for hit in results]
             return users
-        except ESConnectionError as e:
-            print(f"Connection error listing users: {e}")
-            return []
         except Exception as e:
             print(f"Error listing users: {e}")
             return []
@@ -262,8 +198,8 @@ class AccountService:
             print("Invalid category length")
             return False
 
-        if not self.es:
-            print("Elasticsearch not connected")
+        if not self._is_connected():
+            print("Database not connected")
             return False
 
         try:
@@ -285,16 +221,15 @@ class AccountService:
                 "reviewed": False
             }
 
-            self.es.index(index=self.answers_index, document=doc)
+            doc_id = self.db.index_document(self.answers_index, doc)
 
             # Refresh index if requested (useful for testing)
-            if refresh and self.es:
-                self.es.indices.refresh(index=self.answers_index)
+            if refresh and doc_id:
+                from services.database.elasticsearch_backend import ElasticsearchDatabaseService
+                if isinstance(self.db, ElasticsearchDatabaseService):
+                    self.db.refresh_index(self.answers_index)
 
-            return True
-        except ESConnectionError as e:
-            print(f"Connection error recording answer: {e}")
-            return False
+            return doc_id is not None
         except Exception as e:
             print(f"Unexpected error recording answer: {e}")
             return False
@@ -312,7 +247,7 @@ class AccountService:
         if not self._validate_username(username):
             return None
 
-        if not self.es:
+        if not self._is_connected():
             return None
 
         try:
@@ -321,16 +256,15 @@ class AccountService:
                 return None
 
             # Get all answers for the user
-            query = {
-                "size": 10000,  # Large limit to get all answers
-                "query": {
-                    "term": {"username": username}
-                },
-                "sort": [{"timestamp": {"order": "desc"}}]
-            }
+            query = {"term": {"username": username}}
+            sort = [{"timestamp": {"order": "desc"}}]
 
-            response = self.es.search(index=self.answers_index, body=query)
-            all_answers = response['hits']['hits']
+            all_answers = self.db.search_documents(
+                index_name=self.answers_index,
+                query=query,
+                sort=sort,
+                size=10000
+            )
 
             if not all_answers:
                 return UserStats(
@@ -357,9 +291,6 @@ class AccountService:
                 overall_correctness=round(overall_correctness, 2),
                 recent_100_score=round(recent_100_score, 2)
             )
-        except ESConnectionError as e:
-            print(f"Connection error getting user stats: {e}")
-            return None
         except Exception as e:
             print(f"Error getting user stats: {e}")
             return None
@@ -378,26 +309,26 @@ class AccountService:
         if not self._validate_username(username):
             return []
 
-        if not self.es:
+        if not self._is_connected():
             return []
 
         # Validate limit
         limit = max(1, min(limit, 1000))
 
         try:
-            query = {
-                "size": limit,
-                "query": {
-                    "term": {"username": username}
-                },
-                "sort": [{"timestamp": {"order": "desc"}}]
-            }
+            query = {"term": {"username": username}}
+            sort = [{"timestamp": {"order": "desc"}}]
 
-            response = self.es.search(index=self.answers_index, body=query)
+            hits = self.db.search_documents(
+                index_name=self.answers_index,
+                query=query,
+                sort=sort,
+                size=limit
+            )
 
             # Convert to list of dicts with id included and timestamp parsed
             results = []
-            for hit in response['hits']['hits']:
+            for hit in hits:
                 answer = hit['_source'].copy()
                 answer['id'] = hit['_id']
 
@@ -412,9 +343,6 @@ class AccountService:
                 results.append(answer)
 
             return results
-        except ESConnectionError as e:
-            print(f"Connection error getting answer history: {e}")
-            return []
         except Exception as e:
             print(f"Error getting answer history: {e}")
             return []

@@ -57,9 +57,9 @@ def test_account_service():
 
     service = AccountService()
 
-    # Skip if Elasticsearch is not available
-    if not service.es:
-        pytest.skip("Elasticsearch not available")
+    # Skip if database is not available
+    if not service._is_connected():
+        pytest.skip("Database not available")
 
     # Create test user with unique name
     username = f"test_user_pytest_{random.randint(1000, 9999)}"
