@@ -47,11 +47,11 @@
   AI/ML:
     • Ollama (AI Model Runner)
     • LLaMA 3.2 (Language Model)
-    • Elasticsearch 8.11 (RAG Search)
+    • Elasticsearch 8.11 (Optional RAG Search)
     
   Databases:
-    • SQLite (User Data & Statistics)
-    • Elasticsearch (Quiz History & RAG)
+    • MariaDB 11.8 LTS (Default - User Data & History)
+    • Elasticsearch 9.2.1 (Optional - Advanced Search & RAG)
     
   Deployment:
     • Docker & Docker Compose

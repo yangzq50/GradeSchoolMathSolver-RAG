@@ -2,7 +2,9 @@
 
 ## Overview
 
-This document describes the Elasticsearch storage implementation for the GradeSchoolMathSolver-RAG system. All data persistence is handled through Elasticsearch 9.2.1.
+This document describes the Elasticsearch storage implementation for the GradeSchoolMathSolver-RAG system. Elasticsearch 9.2.1 is available as an **alternative database backend** for applications requiring advanced full-text search capabilities.
+
+**Note**: MariaDB 11.8 LTS is the default database backend. Elasticsearch is recommended only when you need advanced full-text search, aggregations, or semantic similarity features. For most use cases, MariaDB provides better performance and simpler setup. See [MariaDB Integration Documentation](./MARIADB_INTEGRATION.md) for details.
 
 ## Architecture
 
@@ -232,12 +234,19 @@ es = Elasticsearch(
 
 ### Configuration
 
-Environment variables:
+To use Elasticsearch as your database backend, set the following environment variables:
+
 ```bash
+# Switch to Elasticsearch backend
+DATABASE_BACKEND=elasticsearch
+
+# Elasticsearch connection settings
 ELASTICSEARCH_HOST=localhost
 ELASTICSEARCH_PORT=9200
 ELASTICSEARCH_INDEX=quiz_history
 ```
+
+**Default**: The system uses MariaDB by default. Set `DATABASE_BACKEND=elasticsearch` to switch to Elasticsearch.
 
 ### Graceful Degradation
 

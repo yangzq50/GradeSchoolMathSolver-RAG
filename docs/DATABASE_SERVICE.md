@@ -2,7 +2,9 @@
 
 ## Overview
 
-The Database Service provides a unified abstraction layer for all database operations in the GradeSchoolMathSolver-RAG project. This architecture allows the application to easily switch between different database backends (Elasticsearch or MariaDB) without modifying business logic.
+The Database Service provides a unified abstraction layer for all database operations in the GradeSchoolMathSolver-RAG project. This architecture allows the application to easily switch between different database backends (MariaDB or Elasticsearch) without modifying business logic.
+
+MariaDB 11.8 LTS is the **default database backend**, providing reliable relational storage with proper user history separation and ACID compliance. Elasticsearch is available as an alternative for advanced full-text search capabilities.
 
 ## Architecture
 
@@ -86,18 +88,22 @@ MariaDB 11.8 LTS implementation using relational storage with JSON support.
 
 **Features:**
 - MySQL connector for reliable connections
+- Proper column typing with indexes for performance
 - JSON column type for flexible data storage
-- Transaction support
-- ACID compliance
+- Transaction support with ACID compliance
+- Elasticsearch-style query translation
+- Efficient user history separation with indexed columns
 - Vector search capabilities (for future RAG enhancements)
 - Mature, stable database engine
 
 **Best For:**
-- Relational data models
+- Relational data models (default choice)
 - Transaction requirements
 - Data integrity constraints
-- Vector search for RAG (future feature)
+- Proper user isolation with indexed queries
 - Traditional RDBMS needs
+- Vector search for RAG (future feature)
+- Production deployments requiring reliability
 
 ### 4. Global Service Instance
 
@@ -116,11 +122,11 @@ db = get_database_service()  # Returns configured database service
 Set the database backend via environment variable in `.env`:
 
 ```bash
-# Use Elasticsearch (default)
-DATABASE_BACKEND=elasticsearch
-
-# Or use MariaDB
+# Use MariaDB (default)
 DATABASE_BACKEND=mariadb
+
+# Or use Elasticsearch
+DATABASE_BACKEND=elasticsearch
 ```
 
 ### Elasticsearch Configuration
@@ -217,22 +223,22 @@ class AccountService:
 
 ## Docker Setup
 
-### Using Elasticsearch (Default)
+### Using MariaDB (Default)
 
 ```bash
-docker-compose up
+docker-compose --profile mariadb up -d
 ```
 
-### Using MariaDB
+### Using Elasticsearch
 
 ```bash
-DATABASE_BACKEND=mariadb docker-compose --profile mariadb up
+DATABASE_BACKEND=elasticsearch docker-compose up -d
 ```
 
 ### Using Both (Development)
 
 ```bash
-docker-compose --profile elasticsearch --profile mariadb up
+docker-compose --profile elasticsearch --profile mariadb up -d
 ```
 
 ## Data Models
@@ -254,18 +260,37 @@ users_schema = {
 
 ### MariaDB Schema
 
-Collections in MariaDB use tables with JSON columns:
+Collections in MariaDB use properly typed tables with indexed columns for optimal performance:
 
+**Users Table:**
 ```sql
-CREATE TABLE users (
-    id VARCHAR(255) PRIMARY KEY,
-    data JSON NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+CREATE TABLE `users` (
+    `username` VARCHAR(255) PRIMARY KEY,
+    `created_at` TIMESTAMP NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
-Data is stored in the `data` JSON column for flexibility.
+**Quiz History Table:**
+```sql
+CREATE TABLE `quiz_history` (
+    `record_id` VARCHAR(255) PRIMARY KEY,
+    `username` VARCHAR(255) NOT NULL,
+    `question` TEXT NOT NULL,
+    `equation` VARCHAR(500) NOT NULL,
+    `user_answer` INT,
+    `correct_answer` INT NOT NULL,
+    `is_correct` BOOLEAN NOT NULL,
+    `category` VARCHAR(100) NOT NULL,
+    `timestamp` TIMESTAMP NOT NULL,
+    `reviewed` BOOLEAN DEFAULT FALSE,
+    INDEX idx_username (username),
+    INDEX idx_timestamp (timestamp),
+    INDEX idx_category (category),
+    INDEX idx_reviewed (reviewed)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+The schema uses proper column types and indexes for fast queries. User history is properly isolated through the indexed `username` column. For more details, see [MariaDB Integration Documentation](./MARIADB_INTEGRATION.md).
 
 ## Adding New Database Backends
 
@@ -358,8 +383,8 @@ set_database_service(mock_db)
 5. **Testing**: Test with both backends to ensure compatibility
 
 6. **Performance**: Choose backend based on your specific needs:
+   - MariaDB: Better for transactional consistency, relational data, user isolation (default)
    - Elasticsearch: Better for full-text search, analytics
-   - MariaDB: Better for transactional consistency, relational data
 
 ## Troubleshooting
 
@@ -408,4 +433,5 @@ The database service architecture is designed to support:
 
 - [Elasticsearch 9.x Documentation](https://www.elastic.co/guide/en/elasticsearch/reference/9.0/index.html)
 - [MariaDB 11.8 Documentation](https://mariadb.com/kb/en/what-is-mariadb-118/)
+- [MariaDB Integration Guide](./MARIADB_INTEGRATION.md) - Detailed MariaDB setup and usage
 - [Database Service Source Code](../services/database/)
