@@ -52,7 +52,7 @@ def test_create_exam_different_difficulties():
         assert len(questions) == 2
         assert all(q.difficulty == difficulty for q in questions)
         assert all(q.equation for q in questions)
-        assert all(isinstance(q.answer, float) for q in questions)
+        assert all(isinstance(q.answer, int) for q in questions)
 
     print("✅ ExamService: All difficulty levels work correctly")
 

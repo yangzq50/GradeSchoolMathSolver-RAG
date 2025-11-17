@@ -45,8 +45,6 @@
         <div id="questionSection" style="display: none;">
             <div style="background: white; padding: 30px; border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); margin-bottom: 20px;">
                 <h3 style="color: #667eea; margin-bottom: 20px;" id="question_text">Loading question...</h3>
-                <p style="font-size: 18px; color: #666; margin-bottom: 10px;">Equation:</p>
-                <p style="font-size: 24px; font-weight: bold; margin-bottom: 30px;" id="equation_text">-</p>
                 
                 <div id="answerForm" style="margin-top: 30px;">
                     <div class="form-group">
@@ -93,6 +91,23 @@
 const examId = '{{ exam_id }}';
 let currentParticipantId = null;
 let pollInterval = null;
+
+// Utility function to format numbers as integers when appropriate
+function formatNumber(num) {
+    if (Number.isInteger(num) || num === Math.floor(num)) {
+        return Math.floor(num).toString();
+    }
+    return num.toString();
+}
+
+// Utility function to render markdown (basic implementation)
+function renderMarkdown(text) {
+    if (!text) return '';
+    return text
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')  // Bold
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')              // Italic
+        .replace(/\n/g, '<br>');                           // Line breaks
+}
 
 async function loadExam() {
     document.getElementById('loading').style.display = 'none';

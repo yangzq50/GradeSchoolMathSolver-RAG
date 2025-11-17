@@ -29,7 +29,7 @@ class Question(BaseModel):
     """
     equation: str
     question_text: str
-    answer: float
+    answer: int
     difficulty: str
     category: Optional[str] = None
 

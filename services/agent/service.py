@@ -3,7 +3,7 @@ RAG Bot Service
 RAG bot that can solve math problems with optional RAG and classification
 """
 import requests
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from config import Config
 from models import AgentConfig, Question
 from services.classification import ClassificationService
@@ -70,7 +70,7 @@ class AgentService:
 
         return result
 
-    def _generate_answer(self, question: Question, context: Dict[str, Any]) -> tuple[float, str]:
+    def _generate_answer(self, question: Question, context: Dict[str, Any]) -> tuple[Optional[int], str]:
         """
         Generate answer using AI model
 
@@ -111,7 +111,7 @@ class AgentService:
                 if choices:
                     response_text = choices[0].get('message', {}).get('content', '').strip()
                     # Parse answer and reasoning
-                    answer, reasoning = self._parse_response(response_text, question.answer)
+                    answer, reasoning = self._parse_response(response_text)
                     return answer, reasoning
                 else:
                     # Fallback: calculate directly
@@ -121,12 +121,11 @@ class AgentService:
                 return question.answer, "Direct calculation (AI unavailable)"
 
         except Exception as e:
-            print(f"Error generating answer with AI: {e}")
-            return question.answer, f"Direct calculation (Error: {str(e)})"
+            return None, f"Error generating answer with AI: {e}"
 
     def _build_prompt(self, question: Question, context: Dict[str, Any]) -> str:
         """Build prompt for AI model"""
-        prompt = f"Solve this math problem:\n\n{question.question_text}\n\nEquation: {question.equation}\n\n"
+        prompt = f"Solve this math problem:\n\n{question.question_text}\n\n"
 
         # Add category context
         if context.get('used_classification'):
@@ -146,7 +145,7 @@ REASONING: [brief explanation of how you solved it]"""
 
         return prompt
 
-    def _parse_response(self, response_text: str, fallback_answer: float) -> tuple[float, str]:
+    def _parse_response(self, response_text: str) -> tuple[Optional[int], str]:
         """
         Parse AI response to extract answer and reasoning
 
@@ -157,7 +156,7 @@ REASONING: [brief explanation of how you solved it]"""
         Returns:
             Tuple of (answer, reasoning)
         """
-        answer = fallback_answer
+        answer = None
         reasoning = response_text
 
         lines = response_text.split('\n')
@@ -169,12 +168,13 @@ REASONING: [brief explanation of how you solved it]"""
                     # Extract first number found
                     import re
                     numbers = re.findall(r'-?\d+\.?\d*', answer_str)
-                    if numbers:
-                        answer = float(numbers[0])
+                    if numbers and ('.' not in numbers[0]):
+                        answer = int(numbers[0])
                 except Exception:
                     pass
-            elif line.startswith('REASONING:'):
-                reasoning = line.replace('REASONING:', '').strip()
+                break
+            # elif line.startswith('REASONING:'):
+            #     reasoning = line.replace('REASONING:', '').strip()
 
         return answer, reasoning
 
@@ -196,7 +196,7 @@ if __name__ == "__main__":
     test_question = Question(
         equation="5 + 3",
         question_text="What is 5 + 3?",
-        answer=8.0,
+        answer=8,
         difficulty="easy"
     )
 

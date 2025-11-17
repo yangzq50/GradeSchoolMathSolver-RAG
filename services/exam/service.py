@@ -185,7 +185,8 @@ class ExamService:
         for idx, question in enumerate(questions):
             agent_result = agent.solve_question(request.username, question)
 
-            is_correct = abs(agent_result['agent_answer'] - question.answer) < 0.01
+            is_correct = (agent_result['agent_answer'] is not None) and (
+                abs(agent_result['agent_answer'] - question.answer) < 0.01)
             if is_correct:
                 correct_count += 1
 

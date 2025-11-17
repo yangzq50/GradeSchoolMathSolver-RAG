@@ -45,6 +45,24 @@
 <script>
 const examId = '{{ exam_id }}';
 
+// Utility function to format numbers as integers when appropriate
+function formatNumber(num) {
+    if (num === null || num === undefined) return '-';
+    if (Number.isInteger(num) || num === Math.floor(num)) {
+        return Math.floor(num).toString();
+    }
+    return num.toString();
+}
+
+// Utility function to render markdown (basic implementation)
+function renderMarkdown(text) {
+    if (!text) return '';
+    return text
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')  // Bold
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')              // Italic
+        .replace(/\n/g, '<br>');                           // Line breaks
+}
+
 async function loadResults() {
     try {
         const response = await fetch(`/api/exam/immersive/${examId}/results`);
@@ -85,8 +103,8 @@ function displayResults(results) {
                     </div>
                 </div>
                 <div style="text-align: right;">
-                    <div style="font-size: 28px; font-weight: bold; color: #667eea;">${p.score_percentage}%</div>
-                    <div style="color: #666; font-size: 14px;">${p.total_score} / ${results.total_questions} correct</div>
+                    <div style="font-size: 28px; font-weight: bold; color: #667eea;">${formatNumber(p.score_percentage)}%</div>
+                    <div style="color: #666; font-size: 14px;">${formatNumber(p.total_score)} / ${results.total_questions} correct</div>
                 </div>
             </div>
         `;
@@ -104,7 +122,7 @@ function displayResults(results) {
             return `
                 <tr>
                     <td style="text-align: center;">${idx + 1}</td>
-                    <td style="text-align: center; font-weight: bold;">${answer !== null ? answer : '-'}</td>
+                    <td style="text-align: center; font-weight: bold;">${formatNumber(answer)}</td>
                     <td style="text-align: center;">
                         <span style="color: ${statusColor}; font-size: 20px;">${statusIcon}</span>
                     </td>
@@ -119,7 +137,7 @@ function displayResults(results) {
                 <h4 style="color: #667eea; margin-bottom: 15px;">${typeIcon} ${p.participant_id}</h4>
                 <div style="margin-bottom: 15px;">
                     <strong>Order:</strong> ${p.order + 1} | 
-                    <strong>Score:</strong> ${p.total_score} / ${results.total_questions} (${p.score_percentage}%)
+                    <strong>Score:</strong> ${formatNumber(p.total_score)} / ${results.total_questions} (${formatNumber(p.score_percentage)}%)
                 </div>
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead>
