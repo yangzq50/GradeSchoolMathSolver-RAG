@@ -4,7 +4,7 @@ Manages exams for users and agents
 """
 from datetime import datetime
 from typing import List, Dict, Any, Optional
-from models import Question, ExamRequest, QuizHistory
+from models import Question, ExamRequest
 from services.qa_generation import QAGenerationService
 from services.classification import ClassificationService
 from services.account import AccountService
@@ -84,7 +84,7 @@ class ExamService:
                 correct_answer=question.answer,
                 category=question.category or 'unknown'
             )
-            
+
             # Note: No need to record in quiz_history_service separately
             # Both services now share the same Elasticsearch index (quiz_history)
 

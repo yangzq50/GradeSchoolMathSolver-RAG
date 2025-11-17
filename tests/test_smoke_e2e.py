@@ -11,22 +11,73 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+@patch('services.account.service.Elasticsearch')
 @patch('services.quiz_history.service.Elasticsearch')
 @patch('services.qa_generation.service.requests.post')
-def test_full_exam_flow_with_mocked_external_services(mock_requests_post, mock_elasticsearch):
+def test_full_exam_flow_with_mocked_external_services(mock_requests_post, mock_elasticsearch_quiz, mock_elasticsearch_account):
     """
     End-to-end smoke test: Generate questions, take exam, process results
     with Elasticsearch and AI Model service mocked
     """
     from services.exam import ExamService
     from models import ExamRequest
+    from elasticsearch import NotFoundError
+
+    # Track created users
+    created_users = set()
 
     # Mock Elasticsearch to avoid connection errors
     mock_es_instance = MagicMock()
     mock_es_instance.ping.return_value = True
     mock_es_instance.indices.exists.return_value = True
     mock_es_instance.index.return_value = {"result": "created"}
-    mock_elasticsearch.return_value = mock_es_instance
+
+    def mock_create(index, id, document, **kwargs):
+        if index == "users":
+            created_users.add(id)
+        return {"result": "created"}
+
+    mock_es_instance.create.side_effect = mock_create
+
+    # Mock get to raise NotFoundError for non-existent users, return user if created
+    def mock_get(index, id, **kwargs):
+        if index == "users":
+            if id not in created_users:
+                raise NotFoundError("User not found", {"error": "not_found"}, {})
+            return {"_source": {"username": id, "created_at": "2025-01-01T00:00:00"}}
+        return {"_source": {"username": id}}
+
+    mock_es_instance.get.side_effect = mock_get
+
+    # Mock search to return created records after they're indexed
+    indexed_records = []
+
+    def mock_index(index, document, **kwargs):
+        if index == "quiz_history":
+            indexed_records.append(document)
+        return {"result": "created"}
+
+    mock_es_instance.index.side_effect = mock_index
+
+    def mock_search(index, body, **kwargs):
+        if index == "quiz_history" and indexed_records:
+            # Return the indexed records
+            return {
+                "hits": {
+                    "hits": [
+                        {
+                            "_id": str(i),
+                            "_source": rec
+                        }
+                        for i, rec in enumerate(indexed_records)
+                    ]
+                }
+            }
+        return {"hits": {"hits": []}}
+
+    mock_es_instance.search.side_effect = mock_search
+    mock_elasticsearch_quiz.return_value = mock_es_instance
+    mock_elasticsearch_account.return_value = mock_es_instance
 
     # Mock AI model API to return a simple question text
     mock_response = MagicMock()

@@ -13,10 +13,15 @@ def test_mistake_review_service():
     """Test mistake review service"""
     from services.mistake_review import MistakeReviewService
     from services.account import AccountService
+    import pytest
 
     # Create services
     account_service = AccountService()
     mistake_service = MistakeReviewService()
+
+    # Skip if Elasticsearch is not available
+    if not account_service.es:
+        pytest.skip("Elasticsearch not available")
 
     # Create test user with unique name
     username = f"test_mistake_{random.randint(1000, 9999)}"

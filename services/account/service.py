@@ -36,7 +36,7 @@ class AccountService:
     def _connect(self):
         """
         Connect to Elasticsearch and create indices if needed
-        
+
         Gracefully handles connection failures by operating in limited mode.
         """
         try:
@@ -69,7 +69,7 @@ class AccountService:
     def _create_indices(self):
         """
         Create Elasticsearch indices with appropriate mappings
-        
+
         Defines schema for efficient storage and retrieval of user data and answer history.
         """
         if not self.es:
@@ -186,10 +186,10 @@ class AccountService:
         """
         if not self._validate_username(username):
             return None
-            
+
         if not self.es:
             return None
-            
+
         try:
             result = self.es.get(index=self.users_index, id=username)
             return result['_source']
@@ -211,7 +211,7 @@ class AccountService:
         """
         if not self.es:
             return []
-            
+
         try:
             # Use scroll API for potentially large result sets
             query = {
@@ -219,7 +219,7 @@ class AccountService:
                 "query": {"match_all": {}},
                 "_source": ["username"]
             }
-            
+
             response = self.es.search(index=self.users_index, body=query)
             users = [hit['_source']['username'] for hit in response['hits']['hits']]
             return users
@@ -286,11 +286,11 @@ class AccountService:
             }
 
             self.es.index(index=self.answers_index, document=doc)
-            
+
             # Refresh index if requested (useful for testing)
             if refresh and self.es:
                 self.es.indices.refresh(index=self.answers_index)
-                
+
             return True
         except ESConnectionError as e:
             print(f"Connection error recording answer: {e}")
@@ -394,13 +394,13 @@ class AccountService:
             }
 
             response = self.es.search(index=self.answers_index, body=query)
-            
+
             # Convert to list of dicts with id included and timestamp parsed
             results = []
             for hit in response['hits']['hits']:
                 answer = hit['_source'].copy()
                 answer['id'] = hit['_id']
-                
+
                 # Convert timestamp string to datetime object for template compatibility
                 if 'timestamp' in answer and isinstance(answer['timestamp'], str):
                     try:
@@ -408,9 +408,9 @@ class AccountService:
                     except (ValueError, AttributeError):
                         # If parsing fails, keep as string or use current time
                         answer['timestamp'] = datetime.utcnow()
-                
+
                 results.append(answer)
-            
+
             return results
         except ESConnectionError as e:
             print(f"Connection error getting answer history: {e}")

@@ -146,7 +146,12 @@ def test_process_human_exam_mixed_answers():
 
 def test_exam_service_creates_user_if_not_exists():
     """Test that exam service creates user if they don't exist"""
+    import pytest
     service = ExamService()
+
+    # Skip if Elasticsearch is not available
+    if not service.account_service.es:
+        pytest.skip("Elasticsearch not available")
 
     import random
     username = f"new_user_{random.randint(10000, 99999)}"

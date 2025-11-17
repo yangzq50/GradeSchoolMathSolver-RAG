@@ -106,11 +106,11 @@ class MistakeReviewService:
                 id=mistake_id,
                 body={"doc": {"reviewed": True}}
             )
-            
+
             # Refresh index if requested (useful for testing)
             if refresh and self.account_service.es:
                 self.account_service.es.indices.refresh(index=self.account_service.answers_index)
-                
+
             return True
         except Exception as e:
             print(f"Error marking mistake as reviewed: {e}")

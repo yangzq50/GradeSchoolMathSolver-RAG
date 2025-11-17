@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Optional
 from models import (
     ImmersiveExam, ImmersiveExamConfig, ImmersiveParticipant,
     ImmersiveExamAnswer, ImmersiveExamStatus,
-    ParticipantType, RevealStrategy, QuizHistory
+    ParticipantType, RevealStrategy
 )
 from services.qa_generation import QAGenerationService
 from services.classification import ClassificationService
