@@ -4,6 +4,8 @@
 
 An AI-powered Grade School Math Solver with RAG (Retrieval-Augmented Generation). Automatically generates arithmetic problems, tracks correct and incorrect answers, and provides personalized practice and exams. Ideal for learning, testing, and building adaptive math tutoring agents.
 
+![Homepage](https://github.com/user-attachments/assets/7e8d6f0d-c8af-4170-be71-77402945fe14)
+
 ## 🎯 Features
 
 - **AI-Generated Questions**: Automatically generate math problems at easy, medium, and hard difficulty levels
@@ -43,11 +45,13 @@ The system consists of 12 main components:
 - Tracks answer correctness history with timestamps
 - Calculates overall correctness and recent 100 questions score
 - Tracks reviewed status for mistake review feature
+- See [Elasticsearch Storage Documentation](docs/ELASTICSEARCH_STORAGE.md)
 
 ### 4. Quiz History Service
 - Elasticsearch integration for RAG capabilities
 - Stores question, answer, and context for retrieval
 - Enables similarity search for personalized learning
+- See [Elasticsearch Storage Documentation](docs/ELASTICSEARCH_STORAGE.md)
 
 ### 5. Exam Service
 - Coordinates question generation and answer evaluation
@@ -70,7 +74,7 @@ The system consists of 12 main components:
 - Toggle-able via configuration
 - Only active for human users (not RAG bots)
 
-### 8. Mistake Review Service (NEW)
+### 8. Mistake Review Service
 - Allows users to review past incorrect answers
 - FIFO (First-In, First-Out) ordering of mistakes
 - Mark mistakes as reviewed to avoid repetition
