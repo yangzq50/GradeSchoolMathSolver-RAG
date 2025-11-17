@@ -75,7 +75,7 @@ class ExamService:
             if is_correct:
                 correct_count += 1
 
-            # Record in account service
+            # Record in account service (stores in quiz_history index with all fields)
             self.account_service.record_answer(
                 username=request.username,
                 question=question.question_text,
@@ -84,19 +84,9 @@ class ExamService:
                 correct_answer=question.answer,
                 category=question.category or 'unknown'
             )
-
-            # Record in quiz history service
-            quiz_history = QuizHistory(
-                username=request.username,
-                question=question.question_text,
-                user_equation=question.equation,
-                user_answer=user_answer,
-                correct_answer=question.answer,
-                is_correct=is_correct,
-                category=question.category or 'unknown',
-                timestamp=datetime.now()
-            )
-            self.quiz_history_service.add_history(quiz_history)
+            
+            # Note: No need to record in quiz_history_service separately
+            # Both services now share the same Elasticsearch index (quiz_history)
 
             # Generate teacher feedback for wrong answers
             teacher_feedback = None
@@ -190,7 +180,7 @@ class ExamService:
             if is_correct:
                 correct_count += 1
 
-            # Record in account service (for answer history in Users page)
+            # Record in account service (stores in quiz_history index with all fields)
             self.account_service.record_answer(
                 username=request.username,
                 question=question.question_text,
@@ -200,18 +190,8 @@ class ExamService:
                 category=question.category or 'unknown'
             )
 
-            # Record in quiz history service
-            quiz_history = QuizHistory(
-                username=request.username,
-                question=question.question_text,
-                user_equation=question.equation,
-                user_answer=agent_result['agent_answer'],
-                correct_answer=question.answer,
-                is_correct=is_correct,
-                category=question.category or 'unknown',
-                timestamp=datetime.now()
-            )
-            self.quiz_history_service.add_history(quiz_history)
+            # Note: No need to record in quiz_history_service separately
+            # Both services now share the same Elasticsearch index (quiz_history)
 
             results.append({
                 'question_number': idx + 1,

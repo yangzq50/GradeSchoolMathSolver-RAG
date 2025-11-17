@@ -395,11 +395,20 @@ class AccountService:
 
             response = self.es.search(index=self.answers_index, body=query)
             
-            # Convert to list of dicts with id included
+            # Convert to list of dicts with id included and timestamp parsed
             results = []
             for hit in response['hits']['hits']:
                 answer = hit['_source'].copy()
                 answer['id'] = hit['_id']
+                
+                # Convert timestamp string to datetime object for template compatibility
+                if 'timestamp' in answer and isinstance(answer['timestamp'], str):
+                    try:
+                        answer['timestamp'] = datetime.fromisoformat(answer['timestamp'].replace('Z', '+00:00'))
+                    except (ValueError, AttributeError):
+                        # If parsing fails, keep as string or use current time
+                        answer['timestamp'] = datetime.utcnow()
+                
                 results.append(answer)
             
             return results

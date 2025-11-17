@@ -319,29 +319,19 @@ class ImmersiveExamService:
         if is_correct:
             participant.total_score += 1
 
-        # Record in account service and quiz history
-        if participant.participant_type == ParticipantType.HUMAN:
-            self.account_service.record_answer(
-                username=participant.participant_id,
-                question=question.question_text,
-                equation=question.equation,
-                user_answer=answer_submission.answer,
-                correct_answer=question.answer,
-                category=question.category or 'unknown'
-            )
-
-        # Record in quiz history for RAG
-        quiz_history = QuizHistory(
+        # Record in account service (stores in quiz_history index with all fields)
+        # This records for both HUMAN and AGENT participants
+        self.account_service.record_answer(
             username=participant.participant_id,
             question=question.question_text,
-            user_equation=question.equation,
+            equation=question.equation,
             user_answer=answer_submission.answer,
             correct_answer=question.answer,
-            is_correct=is_correct,
-            category=question.category or 'unknown',
-            timestamp=datetime.now()
+            category=question.category or 'unknown'
         )
-        self.quiz_history_service.add_history(quiz_history)
+
+        # Note: No need to record in quiz_history_service separately
+        # Both services now share the same Elasticsearch index (quiz_history)
 
         return True
 
