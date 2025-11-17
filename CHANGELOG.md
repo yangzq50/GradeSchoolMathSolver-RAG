@@ -21,7 +21,7 @@ All dependencies have been updated to their absolute latest versions that suppor
 
 #### Database
 - `elasticsearch`: 8.11.1 → 9.2.0 (major version update to latest 9.x with new features)
-- `sqlalchemy`: 2.0.23 → 2.0.44 (patch updates with bug fixes)
+- **Removed `sqlalchemy`** - migrated to Elasticsearch-only storage
 
 #### AI/ML
 - `requests`: 2.32.4 → 2.32.5 (patch update)

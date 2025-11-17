@@ -26,7 +26,7 @@ Thank you for your interest in contributing! This document provides guidelines a
 - Python 3.11 or higher
 - Docker and Docker Compose
 - Git
-- Basic understanding of Flask, SQLAlchemy, and Elasticsearch
+- Basic understanding of Flask and Elasticsearch
 
 ### Development Setup
 
@@ -325,7 +325,6 @@ Include:
 ## 📚 Additional Resources
 
 - [Flask Documentation](https://flask.palletsprojects.com/)
-- [SQLAlchemy Documentation](https://docs.sqlalchemy.org/)
 - [Elasticsearch Python Client](https://elasticsearch-py.readthedocs.io/)
 - [Pydantic Documentation](https://docs.pydantic.dev/)
 

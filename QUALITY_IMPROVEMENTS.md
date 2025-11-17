@@ -53,8 +53,8 @@ answer = num1 * (num2 + num3) - num4
 Enhanced error handling in all service modules:
 
 **Account Service** (`services/account/service.py`):
-- Added `SQLAlchemyError` exception handling
-- Proper transaction rollback on errors
+- Added Elasticsearch connection error handling
+- Proper error logging with context
 - Validation errors logged with context
 
 **Classification Service** (`services/classification/service.py`):
