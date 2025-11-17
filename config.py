@@ -31,7 +31,6 @@ class Config:
         LLM_ENGINE: LLM engine type (e.g., 'llama.cpp')
 
     Database Settings:
-        DATABASE_PATH: Path to SQLite database file
         ELASTICSEARCH_HOST: Elasticsearch server hostname
         ELASTICSEARCH_PORT: Elasticsearch server port
         ELASTICSEARCH_INDEX: Name of the Elasticsearch index
@@ -53,9 +52,6 @@ class Config:
     AI_MODEL_URL = os.getenv('AI_MODEL_URL', 'http://localhost:12434')
     AI_MODEL_NAME = os.getenv('AI_MODEL_NAME', 'ai/llama3.2:1B-Q4_0')
     LLM_ENGINE = os.getenv('LLM_ENGINE', 'llama.cpp')
-
-    # Database Configuration
-    DATABASE_PATH = os.getenv('DATABASE_PATH', 'data/math_solver.db')
 
     # Elasticsearch Configuration
     ELASTICSEARCH_HOST = os.getenv('ELASTICSEARCH_HOST', 'localhost')

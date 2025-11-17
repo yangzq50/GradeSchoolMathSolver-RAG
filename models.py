@@ -296,7 +296,7 @@ class MistakeReview(BaseModel):
     Record of a mistake available for review
 
     Attributes:
-        mistake_id: Unique identifier for the mistake
+        mistake_id: Unique identifier for the mistake (Elasticsearch document ID)
         username: User who made the mistake
         question: Question text
         equation: Mathematical equation
@@ -306,7 +306,7 @@ class MistakeReview(BaseModel):
         timestamp: When the mistake was made
         reviewed: Whether the mistake has been reviewed
     """
-    mistake_id: int
+    mistake_id: str
     username: str
     question: str
     equation: str
@@ -323,7 +323,7 @@ class MistakeReviewRequest(BaseModel):
 
     Attributes:
         username: User requesting to mark as reviewed
-        mistake_id: ID of the mistake to mark as reviewed
+        mistake_id: ID of the mistake to mark as reviewed (Elasticsearch document ID)
     """
     username: str
-    mistake_id: int
+    mistake_id: str

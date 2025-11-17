@@ -29,30 +29,52 @@ class MistakeReviewService:
         Returns:
             MistakeReview object or None if no unreviewed mistakes exist
         """
-        # Get the oldest unreviewed incorrect answer
-        from services.account.service import AnswerHistory
-
-        mistake = self.account_service.session.query(AnswerHistory)\
-            .filter_by(username=username, is_correct=False, reviewed=False)\
-            .order_by(AnswerHistory.timestamp.asc())\
-            .first()
-
-        if not mistake:
+        if not self.account_service.es:
             return None
 
-        return MistakeReview(
-            mistake_id=mistake.id,
-            username=mistake.username,
-            question=mistake.question,
-            equation=mistake.equation,
-            user_answer=mistake.user_answer,
-            correct_answer=mistake.correct_answer,
-            category=mistake.category,
-            timestamp=mistake.timestamp,
-            reviewed=mistake.reviewed
-        )
+        try:
+            # Query for oldest unreviewed incorrect answer
+            query = {
+                "size": 1,
+                "query": {
+                    "bool": {
+                        "must": [
+                            {"term": {"username": username}},
+                            {"term": {"is_correct": False}},
+                            {"term": {"reviewed": False}}
+                        ]
+                    }
+                },
+                "sort": [{"timestamp": {"order": "asc"}}]
+            }
 
-    def mark_as_reviewed(self, username: str, mistake_id: int) -> bool:
+            response = self.account_service.es.search(
+                index=self.account_service.answers_index,
+                body=query
+            )
+
+            if not response['hits']['hits']:
+                return None
+
+            hit = response['hits']['hits'][0]
+            source = hit['_source']
+
+            return MistakeReview(
+                mistake_id=hit['_id'],
+                username=source['username'],
+                question=source['question'],
+                equation=source['equation'],
+                user_answer=source.get('user_answer'),
+                correct_answer=source['correct_answer'],
+                category=source['category'],
+                timestamp=datetime.fromisoformat(source['timestamp']),
+                reviewed=source.get('reviewed', False)
+            )
+        except Exception as e:
+            print(f"Error getting next mistake: {e}")
+            return None
+
+    def mark_as_reviewed(self, username: str, mistake_id: str) -> bool:
         """
         Mark a mistake as reviewed
 
@@ -63,21 +85,27 @@ class MistakeReviewService:
         Returns:
             True if successful, False otherwise
         """
+        if not self.account_service.es:
+            return False
+
         try:
-            from services.account.service import AnswerHistory
+            # Get the document first to verify username matches
+            result = self.account_service.es.get(
+                index=self.account_service.answers_index,
+                id=mistake_id
+            )
 
-            mistake = self.account_service.session.query(AnswerHistory)\
-                .filter_by(id=mistake_id, username=username)\
-                .first()
-
-            if not mistake:
+            if result['_source']['username'] != username:
                 return False
 
-            mistake.reviewed = True
-            self.account_service.session.commit()
+            # Update the document
+            self.account_service.es.update(
+                index=self.account_service.answers_index,
+                id=mistake_id,
+                body={"doc": {"reviewed": True}}
+            )
             return True
         except Exception as e:
-            self.account_service.session.rollback()
             print(f"Error marking mistake as reviewed: {e}")
             return False
 
@@ -91,11 +119,30 @@ class MistakeReviewService:
         Returns:
             Count of unreviewed mistakes
         """
-        from services.account.service import AnswerHistory
+        if not self.account_service.es:
+            return 0
 
-        return self.account_service.session.query(AnswerHistory)\
-            .filter_by(username=username, is_correct=False, reviewed=False)\
-            .count()
+        try:
+            query = {
+                "query": {
+                    "bool": {
+                        "must": [
+                            {"term": {"username": username}},
+                            {"term": {"is_correct": False}},
+                            {"term": {"reviewed": False}}
+                        ]
+                    }
+                }
+            }
+
+            response = self.account_service.es.count(
+                index=self.account_service.answers_index,
+                body=query
+            )
+            return response['count']
+        except Exception as e:
+            print(f"Error getting unreviewed count: {e}")
+            return 0
 
     def get_all_unreviewed_mistakes(self, username: str, limit: int = 100) -> List[MistakeReview]:
         """
@@ -108,28 +155,48 @@ class MistakeReviewService:
         Returns:
             List of MistakeReview objects
         """
-        from services.account.service import AnswerHistory
+        if not self.account_service.es:
+            return []
 
-        mistakes = self.account_service.session.query(AnswerHistory)\
-            .filter_by(username=username, is_correct=False, reviewed=False)\
-            .order_by(AnswerHistory.timestamp.asc())\
-            .limit(limit)\
-            .all()
+        try:
+            query = {
+                "size": limit,
+                "query": {
+                    "bool": {
+                        "must": [
+                            {"term": {"username": username}},
+                            {"term": {"is_correct": False}},
+                            {"term": {"reviewed": False}}
+                        ]
+                    }
+                },
+                "sort": [{"timestamp": {"order": "asc"}}]
+            }
 
-        return [
-            MistakeReview(
-                mistake_id=m.id,
-                username=m.username,
-                question=m.question,
-                equation=m.equation,
-                user_answer=m.user_answer,
-                correct_answer=m.correct_answer,
-                category=m.category,
-                timestamp=m.timestamp,
-                reviewed=m.reviewed
+            response = self.account_service.es.search(
+                index=self.account_service.answers_index,
+                body=query
             )
-            for m in mistakes
-        ]
+
+            mistakes = []
+            for hit in response['hits']['hits']:
+                source = hit['_source']
+                mistakes.append(MistakeReview(
+                    mistake_id=hit['_id'],
+                    username=source['username'],
+                    question=source['question'],
+                    equation=source['equation'],
+                    user_answer=source.get('user_answer'),
+                    correct_answer=source['correct_answer'],
+                    category=source['category'],
+                    timestamp=datetime.fromisoformat(source['timestamp']),
+                    reviewed=source.get('reviewed', False)
+                ))
+
+            return mistakes
+        except Exception as e:
+            print(f"Error getting all unreviewed mistakes: {e}")
+            return []
 
 
 if __name__ == "__main__":

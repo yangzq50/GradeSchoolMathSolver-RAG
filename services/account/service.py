@@ -1,42 +1,12 @@
 """
 Account Service
-Manages user accounts and statistics using SQLite with proper error handling and validation
+Manages user accounts and statistics using Elasticsearch with proper error handling and validation
 """
-import os
 from datetime import datetime
-from typing import List, Optional
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime
-from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy.exc import SQLAlchemyError
+from typing import List, Optional, Dict, Any
+from elasticsearch import Elasticsearch, ConnectionError as ESConnectionError, NotFoundError
 from config import Config
 from models import UserStats
-
-Base = declarative_base()
-
-
-class User(Base):  # type: ignore[valid-type,misc]
-    """User account table"""
-    __tablename__ = 'users'
-
-    id = Column(Integer, primary_key=True)
-    username = Column(String(100), unique=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-
-class AnswerHistory(Base):  # type: ignore[valid-type,misc]
-    """Answer history table"""
-    __tablename__ = 'answer_history'
-
-    id = Column(Integer, primary_key=True)
-    username = Column(String(100), nullable=False)
-    question = Column(String(500), nullable=False)
-    equation = Column(String(200), nullable=False)
-    user_answer = Column(Integer, nullable=True)
-    correct_answer = Column(Integer, nullable=False)
-    is_correct = Column(Boolean, nullable=False)
-    category = Column(String(50), nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow)
-    reviewed = Column(Boolean, default=False, nullable=False)
 
 
 class AccountService:
@@ -47,32 +17,108 @@ class AccountService:
     - User creation and management
     - Answer history tracking
     - Performance statistics calculation
-    - Database connection management
+    - Elasticsearch connection management
 
     Attributes:
         config: Configuration object
-        engine: SQLAlchemy database engine
-        session: SQLAlchemy database session
+        es: Elasticsearch client (None if disconnected)
+        users_index: Name of the Elasticsearch users index
+        answers_index: Name of the Elasticsearch answers index
     """
 
     def __init__(self):
         self.config = Config()
-        self._setup_database()
+        self.users_index = "users"
+        self.answers_index = self.config.ELASTICSEARCH_INDEX
+        self.es: Optional[Elasticsearch] = None
+        self._connect()
 
-    def _setup_database(self):
-        """Initialize database connection and create tables"""
-        # Ensure data directory exists
-        db_dir = os.path.dirname(self.config.DATABASE_PATH)
-        if db_dir and not os.path.exists(db_dir):
-            os.makedirs(db_dir)
+    def _connect(self):
+        """
+        Connect to Elasticsearch and create indices if needed
+        
+        Gracefully handles connection failures by operating in limited mode.
+        """
+        try:
+            self.es = Elasticsearch(
+                [{'host': self.config.ELASTICSEARCH_HOST,
+                  'port': self.config.ELASTICSEARCH_PORT,
+                  'scheme': 'http'}],
+                basic_auth=None,
+                verify_certs=False,
+                request_timeout=10,
+                max_retries=3,
+                retry_on_timeout=True
+            )
 
-        # Create engine and tables
-        self.engine = create_engine(f'sqlite:///{self.config.DATABASE_PATH}')
-        Base.metadata.create_all(self.engine)
+            # Verify connection
+            if not self.es.ping():
+                print("Warning: Elasticsearch ping failed")
+                self.es = None
+                return
 
-        # Create session maker
-        Session = sessionmaker(bind=self.engine)
-        self.session = Session()
+            # Create indices if they don't exist
+            self._create_indices()
+        except ESConnectionError as e:
+            print(f"Warning: Could not connect to Elasticsearch: {e}")
+            print("Account service will operate in limited mode")
+            self.es = None
+        except Exception as e:
+            print(f"Warning: Unexpected error connecting to Elasticsearch: {e}")
+            print("Account service will operate in limited mode")
+            self.es = None
+
+    def _create_indices(self):
+        """
+        Create Elasticsearch indices with appropriate mappings
+        
+        Defines schema for efficient storage and retrieval of user data and answer history.
+        """
+        if not self.es:
+            return
+
+        # Users index mapping
+        users_mapping = {
+            "mappings": {
+                "properties": {
+                    "username": {"type": "keyword"},
+                    "created_at": {"type": "date"}
+                }
+            }
+        }
+
+        # Answer history index mapping (unified schema)
+        answers_mapping = {
+            "mappings": {
+                "properties": {
+                    "username": {"type": "keyword"},
+                    "question": {"type": "text"},
+                    "equation": {"type": "text"},
+                    "user_answer": {"type": "integer"},
+                    "correct_answer": {"type": "integer"},
+                    "is_correct": {"type": "boolean"},
+                    "category": {"type": "keyword"},
+                    "timestamp": {"type": "date"},
+                    "reviewed": {"type": "boolean"}
+                }
+            }
+        }
+
+        try:
+            # Create users index
+            if not self.es.indices.exists(index=self.users_index):
+                self.es.indices.create(index=self.users_index, body=users_mapping)
+                print(f"Created Elasticsearch index: {self.users_index}")
+        except Exception as e:
+            print(f"Error creating users index (may already exist): {e}")
+
+        try:
+            # Create answers index
+            if not self.es.indices.exists(index=self.answers_index):
+                self.es.indices.create(index=self.answers_index, body=answers_mapping)
+                print(f"Created Elasticsearch index: {self.answers_index}")
+        except Exception as e:
+            print(f"Error creating answers index (may already exist): {e}")
 
     def _validate_username(self, username: str) -> bool:
         """
@@ -105,25 +151,32 @@ class AccountService:
             print(f"Invalid username format: {username}")
             return False
 
+        if not self.es:
+            print("Elasticsearch not connected")
+            return False
+
         try:
-            existing = self.session.query(User).filter_by(username=username).first()
+            # Check if user already exists
+            existing = self.get_user(username)
             if existing:
                 return False
 
-            user = User(username=username)
-            self.session.add(user)
-            self.session.commit()
+            # Create user document
+            doc = {
+                "username": username,
+                "created_at": datetime.utcnow().isoformat()
+            }
+
+            self.es.index(index=self.users_index, id=username, document=doc)
             return True
-        except SQLAlchemyError as e:
-            self.session.rollback()
-            print(f"Database error creating user: {e}")
+        except ESConnectionError as e:
+            print(f"Connection error creating user: {e}")
             return False
         except Exception as e:
-            self.session.rollback()
             print(f"Unexpected error creating user: {e}")
             return False
 
-    def get_user(self, username: str) -> Optional[User]:
+    def get_user(self, username: str) -> Optional[Dict[str, Any]]:
         """
         Get user by username
 
@@ -131,14 +184,24 @@ class AccountService:
             username: Username to retrieve
 
         Returns:
-            User object or None if not found
+            User document dict or None if not found
         """
         if not self._validate_username(username):
             return None
+            
+        if not self.es:
+            return None
+            
         try:
-            return self.session.query(User).filter_by(username=username).first()
-        except SQLAlchemyError as e:
-            print(f"Database error retrieving user: {e}")
+            result = self.es.get(index=self.users_index, id=username)
+            return result['_source']
+        except NotFoundError:
+            return None
+        except ESConnectionError as e:
+            print(f"Connection error retrieving user: {e}")
+            return None
+        except Exception as e:
+            print(f"Error retrieving user: {e}")
             return None
 
     def list_users(self) -> List[str]:
@@ -148,11 +211,25 @@ class AccountService:
         Returns:
             List of usernames, empty list on error
         """
+        if not self.es:
+            return []
+            
         try:
-            users = self.session.query(User).all()
-            return [user.username for user in users]
-        except SQLAlchemyError as e:
-            print(f"Database error listing users: {e}")
+            # Use scroll API for potentially large result sets
+            query = {
+                "size": 1000,
+                "query": {"match_all": {}},
+                "_source": ["username"]
+            }
+            
+            response = self.es.search(index=self.users_index, body=query)
+            users = [hit['_source']['username'] for hit in response['hits']['hits']]
+            return users
+        except ESConnectionError as e:
+            print(f"Connection error listing users: {e}")
+            return []
+        except Exception as e:
+            print(f"Error listing users: {e}")
             return []
 
     def record_answer(self, username: str, question: str, equation: str,
@@ -186,6 +263,10 @@ class AccountService:
             print("Invalid category length")
             return False
 
+        if not self.es:
+            print("Elasticsearch not connected")
+            return False
+
         try:
             # Ensure user exists
             if not self.get_user(username):
@@ -193,25 +274,24 @@ class AccountService:
 
             is_correct = user_answer is not None and user_answer == correct_answer
 
-            answer = AnswerHistory(
-                username=username,
-                question=question,
-                equation=equation,
-                user_answer=user_answer,
-                correct_answer=correct_answer,
-                is_correct=is_correct,
-                category=category
-            )
+            doc = {
+                "username": username,
+                "question": question,
+                "equation": equation,
+                "user_answer": user_answer,
+                "correct_answer": correct_answer,
+                "is_correct": is_correct,
+                "category": category,
+                "timestamp": datetime.utcnow().isoformat(),
+                "reviewed": False
+            }
 
-            self.session.add(answer)
-            self.session.commit()
+            self.es.index(index=self.answers_index, document=doc)
             return True
-        except SQLAlchemyError as e:
-            self.session.rollback()
-            print(f"Database error recording answer: {e}")
+        except ESConnectionError as e:
+            print(f"Connection error recording answer: {e}")
             return False
         except Exception as e:
-            self.session.rollback()
             print(f"Unexpected error recording answer: {e}")
             return False
 
@@ -228,13 +308,25 @@ class AccountService:
         if not self._validate_username(username):
             return None
 
+        if not self.es:
+            return None
+
         try:
             user = self.get_user(username)
             if not user:
                 return None
 
-            # Get all answers
-            all_answers = self.session.query(AnswerHistory).filter_by(username=username).all()
+            # Get all answers for the user
+            query = {
+                "size": 10000,  # Large limit to get all answers
+                "query": {
+                    "term": {"username": username}
+                },
+                "sort": [{"timestamp": {"order": "desc"}}]
+            }
+
+            response = self.es.search(index=self.answers_index, body=query)
+            all_answers = response['hits']['hits']
 
             if not all_answers:
                 return UserStats(
@@ -246,17 +338,12 @@ class AccountService:
                 )
 
             total_questions = len(all_answers)
-            correct_answers = sum(1 for a in all_answers if a.is_correct)
+            correct_answers = sum(1 for hit in all_answers if hit['_source'].get('is_correct', False))
             overall_correctness = (correct_answers / total_questions) * 100 if total_questions > 0 else 0.0
 
             # Get recent 100 answers
-            recent_answers = self.session.query(AnswerHistory)\
-                .filter_by(username=username)\
-                .order_by(AnswerHistory.timestamp.desc())\
-                .limit(100)\
-                .all()
-
-            recent_correct = sum(1 for a in recent_answers if a.is_correct)
+            recent_answers = all_answers[:100]
+            recent_correct = sum(1 for hit in recent_answers if hit['_source'].get('is_correct', False))
             recent_100_score = (recent_correct / len(recent_answers)) * 100 if recent_answers else 0.0
 
             return UserStats(
@@ -266,11 +353,14 @@ class AccountService:
                 overall_correctness=round(overall_correctness, 2),
                 recent_100_score=round(recent_100_score, 2)
             )
-        except SQLAlchemyError as e:
-            print(f"Database error getting user stats: {e}")
+        except ESConnectionError as e:
+            print(f"Connection error getting user stats: {e}")
+            return None
+        except Exception as e:
+            print(f"Error getting user stats: {e}")
             return None
 
-    def get_answer_history(self, username: str, limit: int = 100) -> List[AnswerHistory]:
+    def get_answer_history(self, username: str, limit: int = 100) -> List[Dict[str, Any]]:
         """
         Get answer history for a user
 
@@ -279,22 +369,41 @@ class AccountService:
             limit: Maximum number of records to return (1-1000)
 
         Returns:
-            List of AnswerHistory objects, empty list on error
+            List of answer history dicts, empty list on error
         """
         if not self._validate_username(username):
+            return []
+
+        if not self.es:
             return []
 
         # Validate limit
         limit = max(1, min(limit, 1000))
 
         try:
-            return self.session.query(AnswerHistory)\
-                .filter_by(username=username)\
-                .order_by(AnswerHistory.timestamp.desc())\
-                .limit(limit)\
-                .all()
-        except SQLAlchemyError as e:
-            print(f"Database error getting answer history: {e}")
+            query = {
+                "size": limit,
+                "query": {
+                    "term": {"username": username}
+                },
+                "sort": [{"timestamp": {"order": "desc"}}]
+            }
+
+            response = self.es.search(index=self.answers_index, body=query)
+            
+            # Convert to list of dicts with id included
+            results = []
+            for hit in response['hits']['hits']:
+                answer = hit['_source'].copy()
+                answer['id'] = hit['_id']
+                results.append(answer)
+            
+            return results
+        except ESConnectionError as e:
+            print(f"Connection error getting answer history: {e}")
+            return []
+        except Exception as e:
+            print(f"Error getting answer history: {e}")
             return []
 
 

@@ -4,7 +4,6 @@ flask-cors==6.0.1
 
 # Database
 elasticsearch==9.2.0
-sqlalchemy==2.0.44
 
 # AI/ML
 requests==2.32.5
