@@ -22,7 +22,7 @@ services:
 
   # MariaDB 11.8 LTS (alternative database backend)
   mariadb:
-    image: mariadb:11.8
+    image: mariadb:11.8-ubi
     container_name: math-solver-mariadb
     environment:
       - MYSQL_ROOT_PASSWORD=math_solver_password
