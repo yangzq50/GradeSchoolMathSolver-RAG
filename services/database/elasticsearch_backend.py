@@ -15,7 +15,7 @@ class ElasticsearchDatabaseService(DatabaseService):
     Elasticsearch implementation of DatabaseService
 
     Provides database operations using Elasticsearch as the backend.
-    Handles connection management, index creation, and CRUD operations.
+    Maps generic database operations to Elasticsearch-specific operations (indices, documents, etc.).
     """
 
     def __init__(self):
@@ -70,13 +70,13 @@ class ElasticsearchDatabaseService(DatabaseService):
         """
         return self.es is not None and self.es.ping()
 
-    def create_index(self, index_name: str, mapping: Dict[str, Any]) -> bool:
+    def create_collection(self, collection_name: str, schema: Dict[str, Any]) -> bool:
         """
-        Create an Elasticsearch index
+        Create an Elasticsearch index (collection)
 
         Args:
-            index_name: Name of the index to create
-            mapping: Elasticsearch mapping definition
+            collection_name: Name of the index to create
+            schema: Elasticsearch mapping definition
 
         Returns:
             bool: True if successful, False otherwise
@@ -85,20 +85,20 @@ class ElasticsearchDatabaseService(DatabaseService):
             return False
 
         try:
-            if not self.es.indices.exists(index=index_name):
-                self.es.indices.create(index=index_name, body=mapping)
-                print(f"Created Elasticsearch index: {index_name}")
+            if not self.es.indices.exists(index=collection_name):
+                self.es.indices.create(index=collection_name, body=schema)
+                print(f"Created Elasticsearch index: {collection_name}")
             return True
         except Exception as e:
-            print(f"Error creating index {index_name}: {e}")
+            print(f"Error creating index {collection_name}: {e}")
             return False
 
-    def index_exists(self, index_name: str) -> bool:
+    def collection_exists(self, collection_name: str) -> bool:
         """
-        Check if an Elasticsearch index exists
+        Check if an Elasticsearch index (collection) exists
 
         Args:
-            index_name: Name of the index
+            collection_name: Name of the index
 
         Returns:
             bool: True if exists, False otherwise
@@ -107,18 +107,18 @@ class ElasticsearchDatabaseService(DatabaseService):
             return False
 
         try:
-            return self.es.indices.exists(index=index_name)
+            return self.es.indices.exists(index=collection_name)
         except Exception:
             return False
 
-    def create_document(self, index_name: str, doc_id: str, document: Dict[str, Any]) -> bool:
+    def create_record(self, collection_name: str, record_id: str, record: Dict[str, Any]) -> bool:
         """
-        Create a new document in Elasticsearch (must not exist)
+        Create a new document (record) in Elasticsearch (must not exist)
 
         Args:
-            index_name: Name of the index
-            doc_id: Unique identifier for the document
-            document: Document data
+            collection_name: Name of the index
+            record_id: Unique identifier for the document
+            record: Document data
 
         Returns:
             bool: True if successful, False if document already exists or error
@@ -127,7 +127,7 @@ class ElasticsearchDatabaseService(DatabaseService):
             return False
 
         try:
-            self.es.create(index=index_name, id=doc_id, document=document)
+            self.es.create(index=collection_name, id=record_id, document=record)
             return True
         except ConflictError:
             # Document already exists
@@ -136,14 +136,14 @@ class ElasticsearchDatabaseService(DatabaseService):
             print(f"Error creating document: {e}")
             return False
 
-    def index_document(self, index_name: str, document: Dict[str, Any], doc_id: Optional[str] = None) -> Optional[str]:
+    def insert_record(self, collection_name: str, record: Dict[str, Any], record_id: Optional[str] = None) -> Optional[str]:
         """
-        Index a document in Elasticsearch (create or update)
+        Index a document (record) in Elasticsearch (create or update)
 
         Args:
-            index_name: Name of the index
-            document: Document data
-            doc_id: Optional document ID
+            collection_name: Name of the index
+            record: Document data
+            record_id: Optional document ID
 
         Returns:
             str: Document ID if successful, None otherwise
@@ -152,22 +152,22 @@ class ElasticsearchDatabaseService(DatabaseService):
             return None
 
         try:
-            if doc_id:
-                result = self.es.index(index=index_name, id=doc_id, document=document)
+            if record_id:
+                result = self.es.index(index=collection_name, id=record_id, document=record)
             else:
-                result = self.es.index(index=index_name, document=document)
+                result = self.es.index(index=collection_name, document=record)
             return result.get('_id')
         except Exception as e:
             print(f"Error indexing document: {e}")
             return None
 
-    def get_document(self, index_name: str, doc_id: str) -> Optional[Dict[str, Any]]:
+    def get_record(self, collection_name: str, record_id: str) -> Optional[Dict[str, Any]]:
         """
-        Retrieve a document from Elasticsearch by ID
+        Retrieve a document (record) from Elasticsearch by ID
 
         Args:
-            index_name: Name of the index
-            doc_id: Document ID
+            collection_name: Name of the index
+            record_id: Document ID
 
         Returns:
             dict: Document data if found, None otherwise
@@ -176,7 +176,7 @@ class ElasticsearchDatabaseService(DatabaseService):
             return None
 
         try:
-            result = self.es.get(index=index_name, id=doc_id)
+            result = self.es.get(index=collection_name, id=record_id)
             return result.get('_source')
         except NotFoundError:
             return None
@@ -184,25 +184,25 @@ class ElasticsearchDatabaseService(DatabaseService):
             print(f"Error getting document: {e}")
             return None
 
-    def search_documents(
+    def search_records(
         self,
-        index_name: str,
+        collection_name: str,
         query: Optional[Dict[str, Any]] = None,
         filters: Optional[Dict[str, Any]] = None,
         sort: Optional[List[Dict[str, Any]]] = None,
-        size: int = 10,
-        from_: int = 0
+        limit: int = 10,
+        offset: int = 0
     ) -> List[Dict[str, Any]]:
         """
-        Search for documents in Elasticsearch
+        Search for documents (records) in Elasticsearch
 
         Args:
-            index_name: Name of the index
+            collection_name: Name of the index
             query: Elasticsearch query DSL
             filters: Additional filter conditions
             sort: Sort specifications
-            size: Maximum number of results
-            from_: Offset for pagination
+            limit: Maximum number of results
+            offset: Offset for pagination
 
         Returns:
             list: List of matching documents with _id and _source
@@ -212,8 +212,8 @@ class ElasticsearchDatabaseService(DatabaseService):
 
         try:
             body: Dict[str, Any] = {
-                "size": size,
-                "from": from_
+                "size": limit,
+                "from": offset
             }
 
             # Build query
@@ -236,20 +236,20 @@ class ElasticsearchDatabaseService(DatabaseService):
             if sort:
                 body["sort"] = sort
 
-            response = self.es.search(index=index_name, body=body)
+            response = self.es.search(index=collection_name, body=body)
             return response['hits']['hits']
         except Exception as e:
             print(f"Error searching documents: {e}")
             return []
 
-    def update_document(self, index_name: str, doc_id: str, partial_doc: Dict[str, Any]) -> bool:
+    def update_record(self, collection_name: str, record_id: str, partial_record: Dict[str, Any]) -> bool:
         """
-        Update a document partially in Elasticsearch
+        Update a document (record) partially in Elasticsearch
 
         Args:
-            index_name: Name of the index
-            doc_id: Document ID
-            partial_doc: Fields to update
+            collection_name: Name of the index
+            record_id: Document ID
+            partial_record: Fields to update
 
         Returns:
             bool: True if successful, False otherwise
@@ -258,19 +258,19 @@ class ElasticsearchDatabaseService(DatabaseService):
             return False
 
         try:
-            self.es.update(index=index_name, id=doc_id, body={"doc": partial_doc})
+            self.es.update(index=collection_name, id=record_id, body={"doc": partial_record})
             return True
         except Exception as e:
             print(f"Error updating document: {e}")
             return False
 
-    def delete_document(self, index_name: str, doc_id: str) -> bool:
+    def delete_record(self, collection_name: str, record_id: str) -> bool:
         """
-        Delete a document from Elasticsearch
+        Delete a document (record) from Elasticsearch
 
         Args:
-            index_name: Name of the index
-            doc_id: Document ID
+            collection_name: Name of the index
+            record_id: Document ID
 
         Returns:
             bool: True if successful, False otherwise
@@ -279,7 +279,7 @@ class ElasticsearchDatabaseService(DatabaseService):
             return False
 
         try:
-            self.es.delete(index=index_name, id=doc_id)
+            self.es.delete(index=collection_name, id=record_id)
             return True
         except NotFoundError:
             return False
@@ -287,12 +287,12 @@ class ElasticsearchDatabaseService(DatabaseService):
             print(f"Error deleting document: {e}")
             return False
 
-    def count_documents(self, index_name: str, query: Optional[Dict[str, Any]] = None) -> int:
+    def count_records(self, collection_name: str, query: Optional[Dict[str, Any]] = None) -> int:
         """
-        Count documents matching a query in Elasticsearch
+        Count documents (records) matching a query in Elasticsearch
 
         Args:
-            index_name: Name of the index
+            collection_name: Name of the index
             query: Elasticsearch query DSL
 
         Returns:
@@ -303,20 +303,20 @@ class ElasticsearchDatabaseService(DatabaseService):
 
         try:
             body = {"query": query} if query else {"query": {"match_all": {}}}
-            response = self.es.count(index=index_name, body=body)
+            response = self.es.count(index=collection_name, body=body)
             return response.get('count', 0)
         except Exception as e:
             print(f"Error counting documents: {e}")
             return 0
 
-    def refresh_index(self, index_name: str) -> bool:
+    def refresh_index(self, collection_name: str) -> bool:
         """
         Refresh an Elasticsearch index (make recent changes visible)
 
         This is useful for testing to ensure documents are immediately searchable.
 
         Args:
-            index_name: Name of the index to refresh
+            collection_name: Name of the index to refresh
 
         Returns:
             bool: True if successful, False otherwise
@@ -325,7 +325,7 @@ class ElasticsearchDatabaseService(DatabaseService):
             return False
 
         try:
-            self.es.indices.refresh(index=index_name)
+            self.es.indices.refresh(index=collection_name)
             return True
         except Exception as e:
             print(f"Error refreshing index: {e}")

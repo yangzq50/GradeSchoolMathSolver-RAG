@@ -46,7 +46,7 @@ class MistakeReviewService:
             }
             sort = [{"timestamp": {"order": "asc"}}]
 
-            hits = self.account_service.db.search_documents(
+            hits = self.account_service.db.search_records(
                 index_name=self.account_service.answers_index,
                 query=query,
                 sort=sort,
@@ -91,7 +91,7 @@ class MistakeReviewService:
 
         try:
             # Get the document first to verify username matches
-            doc = self.account_service.db.get_document(
+            doc = self.account_service.db.get_record(
                 self.account_service.answers_index,
                 mistake_id
             )
@@ -100,7 +100,7 @@ class MistakeReviewService:
                 return False
 
             # Update the document
-            success = self.account_service.db.update_document(
+            success = self.account_service.db.update_record(
                 self.account_service.answers_index,
                 mistake_id,
                 {"reviewed": True}
@@ -141,7 +141,7 @@ class MistakeReviewService:
                 }
             }
 
-            return self.account_service.db.count_documents(
+            return self.account_service.db.count_records(
                 self.account_service.answers_index,
                 query
             )

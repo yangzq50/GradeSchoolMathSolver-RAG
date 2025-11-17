@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Database Service provides a unified abstraction layer for all database operations in the GradeSchoolMathSolver-RAG project. This architecture allows the application to easily switch between different database backends (Elasticsearch, MongoDB, PostgreSQL, etc.) without modifying business logic.
+The Database Service provides a unified abstraction layer for all database operations in the GradeSchoolMathSolver-RAG project. This architecture allows the application to easily switch between different database backends (Elasticsearch or MariaDB) without modifying business logic.
 
 ## Architecture
 
@@ -23,13 +23,12 @@ The Database Service provides a unified abstraction layer for all database opera
 ┌─────────────────────────────────────────────────┐
 │        Backend Implementations                  │
 │  ┌──────────────────────────────────────────┐  │
-│  │  ElasticsearchDatabaseService (Current)  │  │
+│  │  ElasticsearchDatabaseService            │  │
+│  │  (Full-text search, JSON documents)      │  │
 │  └──────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────┐  │
-│  │  MongoDBDatabaseService (Future)         │  │
-│  └──────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────┐  │
-│  │  PostgreSQLDatabaseService (Future)      │  │
+│  │  MariaDBDatabaseService                  │  │
+│  │  (Relational, JSON support, vectors)     │  │
 │  └──────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────┘
 ```
@@ -40,47 +39,106 @@ The Database Service provides a unified abstraction layer for all database opera
 services/database/
 ├── __init__.py                   # Module exports
 ├── service.py                    # Abstract DatabaseService interface
-└── elasticsearch_backend.py     # Elasticsearch implementation
+├── elasticsearch_backend.py     # Elasticsearch 9.x implementation
+└── mariadb_backend.py           # MariaDB 11.8 LTS implementation
 ```
 
 ## Core Components
 
 ### 1. DatabaseService (Abstract Interface)
 
-The `DatabaseService` class defines a standard interface that all database backend implementations must follow:
+The `DatabaseService` class defines a standard interface that all database backend implementations must follow. This uses database-agnostic terminology:
 
 **Key Methods:**
 - `connect()`: Establish database connection
 - `is_connected()`: Check connection status
-- `create_index()`: Create index/collection/table
-- `index_exists()`: Check if index exists
-- `create_document()`: Create new document (fail if exists)
-- `index_document()`: Create or update document
-- `get_document()`: Retrieve document by ID
-- `search_documents()`: Search with query and filters
-- `update_document()`: Partial document update
-- `delete_document()`: Delete document
-- `count_documents()`: Count matching documents
+- `create_collection(name, schema)`: Create collection/table/index
+- `collection_exists(name)`: Check if collection exists
+- `create_record(collection, id, data)`: Create new record (fail if exists)
+- `insert_record(collection, data, id)`: Create or update record
+- `get_record(collection, id)`: Retrieve record by ID
+- `search_records(collection, query, filters, sort, limit, offset)`: Search with query and filters
+- `update_record(collection, id, partial_data)`: Partial record update
+- `delete_record(collection, id)`: Delete record
+- `count_records(collection, query)`: Count matching records
 
 ### 2. ElasticsearchDatabaseService
 
-Current implementation using Elasticsearch 9.x:
+Elasticsearch 9.x implementation optimized for full-text search and document storage.
 
 **Features:**
 - URL-based connection initialization
 - Automatic index creation with mappings
-- Proper error handling and graceful degradation
-- Support for complex queries and full-text search
+- Full-text search capabilities
+- JSON document storage
 - Conflict detection for unique constraints
+- Real-time search and analytics
 
-### 3. Global Service Instance
+**Best For:**
+- Full-text search requirements
+- Document-oriented data
+- Real-time analytics
+- Flexible schema needs
 
-The `get_database_service()` function provides a singleton database service instance:
+### 3. MariaDBDatabaseService
+
+MariaDB 11.8 LTS implementation using relational storage with JSON support.
+
+**Features:**
+- MySQL connector for reliable connections
+- JSON column type for flexible data storage
+- Transaction support
+- ACID compliance
+- Vector search capabilities (for future RAG enhancements)
+- Mature, stable database engine
+
+**Best For:**
+- Relational data models
+- Transaction requirements
+- Data integrity constraints
+- Vector search for RAG (future feature)
+- Traditional RDBMS needs
+
+### 4. Global Service Instance
+
+The `get_database_service()` function provides a singleton database service instance based on configuration:
 
 ```python
 from services.database import get_database_service
 
 db = get_database_service()  # Returns configured database service
+```
+
+## Configuration
+
+### Backend Selection
+
+Set the database backend via environment variable in `.env`:
+
+```bash
+# Use Elasticsearch (default)
+DATABASE_BACKEND=elasticsearch
+
+# Or use MariaDB
+DATABASE_BACKEND=mariadb
+```
+
+### Elasticsearch Configuration
+
+```bash
+ELASTICSEARCH_HOST=localhost
+ELASTICSEARCH_PORT=9200
+ELASTICSEARCH_INDEX=quiz_history
+```
+
+### MariaDB Configuration
+
+```bash
+MARIADB_HOST=localhost
+MARIADB_PORT=3306
+MARIADB_USER=root
+MARIADB_PASSWORD=your_password
+MARIADB_DATABASE=math_solver
 ```
 
 ## Usage Examples
@@ -97,302 +155,257 @@ db = get_database_service()
 if db.is_connected():
     print("Database connected!")
 
-# Create index
-mapping = {
-    "mappings": {
+# Create collection
+schema = {
+    "mappings": {  # For Elasticsearch
         "properties": {
             "username": {"type": "keyword"},
-            "email": {"type": "keyword"},
             "created_at": {"type": "date"}
         }
     }
 }
-db.create_index("users", mapping)
+db.create_collection("users", schema)
 
-# Create document (unique)
-user = {
+# Create a record
+user_data = {
     "username": "john_doe",
-    "email": "john@example.com",
-    "created_at": "2025-01-01T00:00:00"
+    "created_at": "2025-01-15T10:00:00Z"
 }
-success = db.create_document("users", "john_doe", user)
+success = db.create_record("users", "john_doe", user_data)
 
-# Index document (create or update)
-user["email"] = "john.doe@example.com"
-doc_id = db.index_document("users", user, doc_id="john_doe")
+# Get a record
+user = db.get_record("users", "john_doe")
+print(user)
 
-# Get document
-user_data = db.get_document("users", "john_doe")
+# Update a record
+db.update_record("users", "john_doe", {"last_login": "2025-01-16T09:00:00Z"})
 
-# Search documents
-query = {"term": {"username": "john_doe"}}
-results = db.search_documents("users", query=query, size=10)
+# Search records
+results = db.search_records(
+    "users",
+    filters={"username": "john_doe"},
+    limit=10
+)
 
-# Update document
-db.update_document("users", "john_doe", {"email": "newemail@example.com"})
+# Count records
+count = db.count_records("users", query={"match_all": {}})
 
-# Delete document
-db.delete_document("users", "john_doe")
-
-# Count documents
-count = db.count_documents("users", query=query)
+# Delete a record
+db.delete_record("users", "john_doe")
 ```
 
-### Integration with Services
+### Using in Application Services
 
 ```python
-from services.database import get_database_service
-
-class MyService:
+class AccountService:
     def __init__(self):
         self.db = get_database_service()
-        self.index_name = "my_data"
-        self._create_index()
+        self.users_collection = "users"
+        self._create_collections()
     
-    def _create_index(self):
-        mapping = {...}
-        self.db.create_index(self.index_name, mapping)
+    def _create_collections(self):
+        schema = {...}
+        self.db.create_collection(self.users_collection, schema)
     
-    def add_record(self, data):
-        if not self.db.is_connected():
-            return False
-        
-        doc_id = self.db.index_document(self.index_name, data)
-        return doc_id is not None
-    
-    def search_records(self, filters):
-        if not self.db.is_connected():
-            return []
-        
-        query = {"bool": {"must": [...]}}
-        return self.db.search_documents(self.index_name, query=query)
+    def create_user(self, username: str) -> bool:
+        user_data = {
+            "username": username,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        return self.db.create_record(self.users_collection, username, user_data)
 ```
 
-## Switching Database Backends
+## Docker Setup
 
-### Option 1: Implement New Backend
+### Using Elasticsearch (Default)
 
-1. Create new backend file (e.g., `mongodb_backend.py`)
-2. Implement `DatabaseService` interface
-3. Update `service.py` to use new backend
+```bash
+docker-compose up
+```
+
+### Using MariaDB
+
+```bash
+DATABASE_BACKEND=mariadb docker-compose --profile mariadb up
+```
+
+### Using Both (Development)
+
+```bash
+docker-compose --profile elasticsearch --profile mariadb up
+```
+
+## Data Models
+
+### Elasticsearch Mapping
+
+Collections in Elasticsearch use index mappings:
 
 ```python
-# services/database/mongodb_backend.py
-from .service import DatabaseService
-from pymongo import MongoClient
+users_schema = {
+    "mappings": {
+        "properties": {
+            "username": {"type": "keyword"},
+            "created_at": {"type": "date"}
+        }
+    }
+}
+```
 
-class MongoDBDatabaseService(DatabaseService):
-    def __init__(self):
-        self.client = MongoClient(...)
-        
+### MariaDB Schema
+
+Collections in MariaDB use tables with JSON columns:
+
+```sql
+CREATE TABLE users (
+    id VARCHAR(255) PRIMARY KEY,
+    data JSON NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+Data is stored in the `data` JSON column for flexibility.
+
+## Adding New Database Backends
+
+To add a new database backend:
+
+1. **Create Backend Class**: Create a new file in `services/database/` (e.g., `redis_backend.py`)
+
+2. **Implement Interface**: Implement all methods from `DatabaseService`:
+
+```python
+from .service import DatabaseService
+
+class RedisDatabaseService(DatabaseService):
     def connect(self) -> bool:
-        # MongoDB connection logic
+        # Implementation
         pass
     
-    def create_document(self, index_name, doc_id, document):
-        # MongoDB insert logic
-        collection = self.client[index_name]
-        collection.insert_one({"_id": doc_id, **document})
-        return True
+    def create_collection(self, name: str, schema: Dict) -> bool:
+        # Implementation
+        pass
     
-    # Implement other methods...
+    # ... implement all other methods
 ```
 
-2. Update `service.py`:
+3. **Update Service Loader**: Add to `get_database_service()` in `service.py`:
 
 ```python
 def get_database_service() -> DatabaseService:
-    global _db_service
-    if _db_service is None:
-        # Switch to MongoDB
-        from .mongodb_backend import MongoDBDatabaseService
-        _db_service = MongoDBDatabaseService()
-    return _db_service
+    backend = os.getenv('DATABASE_BACKEND', 'elasticsearch').lower()
+    
+    if backend == 'redis':
+        from .redis_backend import RedisDatabaseService
+        return RedisDatabaseService()
+    elif backend == 'mariadb':
+        from .mariadb_backend import MariaDBDatabaseService
+        return MariaDBDatabaseService()
+    else:  # Default to elasticsearch
+        from .elasticsearch_backend import ElasticsearchDatabaseService
+        return ElasticsearchDatabaseService()
 ```
 
-### Option 2: Configuration-Based Selection
+4. **Add Dependencies**: Update `requirements.txt` with required packages
 
-Add configuration for database type:
+5. **Update Configuration**: Add configuration in `config.py` and `.env.example`
+
+6. **Update Docker**: Add service to `docker-compose.yml` if applicable
+
+## Testing
+
+### Testing with Different Backends
 
 ```python
-# config.py
-DATABASE_TYPE = os.getenv("DATABASE_TYPE", "elasticsearch")
+from services.database import set_database_service
+from services.database.mariadb_backend import MariaDBDatabaseService
 
-# service.py
-def get_database_service() -> DatabaseService:
-    global _db_service
-    if _db_service is None:
-        db_type = Config().DATABASE_TYPE
-        
-        if db_type == "elasticsearch":
-            from .elasticsearch_backend import ElasticsearchDatabaseService
-            _db_service = ElasticsearchDatabaseService()
-        elif db_type == "mongodb":
-            from .mongodb_backend import MongoDBDatabaseService
-            _db_service = MongoDBDatabaseService()
-        elif db_type == "postgresql":
-            from .postgresql_backend import PostgreSQLDatabaseService
-            _db_service = PostgreSQLDatabaseService()
-        else:
-            raise ValueError(f"Unsupported database type: {db_type}")
-    
-    return _db_service
+# For testing with MariaDB
+db = MariaDBDatabaseService()
+set_database_service(db)
+
+# Your tests here
 ```
 
-## Benefits
+### Mocking Database Operations
 
-### 1. **Abstraction**
-- Business logic independent of database implementation
-- Clean separation of concerns
-- Easier to understand and maintain
-
-### 2. **Flexibility**
-- Switch databases without changing application code
-- Test with different backends
-- Gradual migration strategies
-
-### 3. **Testability**
-- Easy to mock database operations
-- Unit tests don't require real database
-- Consistent testing interface
-
-### 4. **Maintainability**
-- Centralized database logic
-- Single point of change for database operations
-- Clear API contract
-
-### 5. **Scalability**
-- Can use different databases for different use cases
-- Easy to add caching layers
-- Support for read replicas or sharding
-
-## Migration Guide
-
-### From Direct Elasticsearch to Database Service
-
-**Before:**
 ```python
-from elasticsearch import Elasticsearch, NotFoundError
+from unittest.mock import Mock
+from services.database import set_database_service
 
-class MyService:
-    def __init__(self):
-        self.es = Elasticsearch([...])
-    
-    def get_item(self, item_id):
-        try:
-            result = self.es.get(index="items", id=item_id)
-            return result['_source']
-        except NotFoundError:
-            return None
-```
+# Create mock database
+mock_db = Mock()
+mock_db.is_connected.return_value = True
+mock_db.get_record.return_value = {"username": "test_user"}
 
-**After:**
-```python
-from services.database import get_database_service
+# Inject mock
+set_database_service(mock_db)
 
-class MyService:
-    def __init__(self):
-        self.db = get_database_service()
-    
-    def get_item(self, item_id):
-        return self.db.get_document("items", item_id)
+# Your tests here
 ```
 
 ## Best Practices
 
-1. **Always check connection status** before operations
-2. **Use create_document()** for unique constraints
-3. **Use index_document()** for create-or-update semantics
-4. **Handle None returns** from get/search operations
-5. **Use appropriate index sizes** for search operations
-6. **Leverage filters** for efficient queries
-7. **Consider pagination** for large result sets
+1. **Use Generic Terminology**: Always use collection/record terminology in application code, not database-specific terms
 
-## Performance Considerations
+2. **Handle Connection Failures**: Always check `is_connected()` before operations
 
-- **Index creation**: Done once at service initialization
-- **Connection pooling**: Handled by backend implementation
-- **Query optimization**: Use filters over full queries when possible
-- **Caching**: Can be added at service layer
-- **Batch operations**: Consider adding bulk operations for large datasets
+3. **Schema Definition**: Define schemas that work across backends when possible
 
-## Future Enhancements
+4. **Error Handling**: Wrap database operations in try-except blocks
 
-1. **Transaction support**: Add transactional operations
-2. **Bulk operations**: Batch insert/update/delete
-3. **Aggregations**: Add aggregation query support
-4. **Schema validation**: Validate documents before storage
-5. **Migration tools**: Database migration utilities
-6. **Performance monitoring**: Built-in metrics and logging
-7. **Connection pooling**: Advanced connection management
-8. **Backup/restore**: Database backup utilities
+5. **Testing**: Test with both backends to ensure compatibility
 
-## Testing
-
-### Unit Tests with Mocks
-
-```python
-from unittest.mock import MagicMock
-from services.database import set_database_service
-
-def test_my_service():
-    # Create mock database
-    mock_db = MagicMock()
-    mock_db.is_connected.return_value = True
-    mock_db.get_document.return_value = {"id": "1", "name": "test"}
-    
-    # Inject mock
-    set_database_service(mock_db)
-    
-    # Test service
-    service = MyService()
-    result = service.get_item("1")
-    assert result["name"] == "test"
-```
-
-### Integration Tests
-
-```python
-def test_with_real_elasticsearch():
-    # Use real Elasticsearch for integration tests
-    service = MyService()
-    
-    if not service.db.is_connected():
-        pytest.skip("Elasticsearch not available")
-    
-    # Run integration tests
-    ...
-```
+6. **Performance**: Choose backend based on your specific needs:
+   - Elasticsearch: Better for full-text search, analytics
+   - MariaDB: Better for transactional consistency, relational data
 
 ## Troubleshooting
 
 ### Connection Issues
 
-```python
-db = get_database_service()
-if not db.is_connected():
-    print("Database not connected - check:")
-    print("1. Database server is running")
-    print("2. Connection settings in config")
-    print("3. Network connectivity")
-    print("4. Credentials are correct")
-```
+**Problem**: Cannot connect to database
 
-### Query Performance
+**Solutions**:
+- Check if database service is running: `docker ps`
+- Verify configuration in `.env`
+- Check network connectivity
+- Review logs: `docker logs math-solver-elasticsearch` or `docker logs math-solver-mariadb`
 
-- Use appropriate indices
-- Limit result set sizes
-- Use filters instead of queries where possible
-- Consider caching frequently accessed data
+### Schema Errors
 
-### Error Handling
+**Problem**: Schema/mapping errors
 
-All methods handle errors gracefully:
-- Return `None` or empty list on error
-- Print error messages for debugging
-- No exceptions propagated to caller
-- Services degrade gracefully when database unavailable
+**Solutions**:
+- Verify schema format matches backend requirements
+- Check data types are compatible
+- Review backend-specific documentation
 
-## Conclusion
+### Performance Issues
 
-The Database Service architecture provides a solid foundation for flexible, maintainable data access in the GradeSchoolMathSolver-RAG project. It allows the application to adapt to changing requirements and easily integrate new database technologies as needed.
+**Problem**: Slow queries or operations
+
+**Solutions**:
+- Add appropriate indexes (Elasticsearch) or database indexes (MariaDB)
+- Optimize queries and filters
+- Consider pagination for large result sets
+- Monitor database resource usage
+
+## Future Enhancements
+
+The database service architecture is designed to support:
+
+- **Vector Search**: MariaDB 11.8 supports vector search for RAG enhancements
+- **Caching Layer**: Add Redis caching with minimal changes
+- **Read Replicas**: Support multiple database instances for scaling
+- **Bulk Operations**: Batch insert/update operations for performance
+- **Schema Migrations**: Automated schema version management
+- **Backup/Restore**: Automated backup strategies
+- **Monitoring**: Database performance metrics and alerts
+
+## Additional Resources
+
+- [Elasticsearch 9.x Documentation](https://www.elastic.co/guide/en/elasticsearch/reference/9.0/index.html)
+- [MariaDB 11.8 Documentation](https://mariadb.com/kb/en/what-is-mariadb-118/)
+- [Database Service Source Code](../services/database/)

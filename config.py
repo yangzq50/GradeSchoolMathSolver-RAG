@@ -4,7 +4,7 @@ Configuration settings for the GradeSchoolMathSolver-RAG system
 This module manages all application configuration settings loaded from environment
 variables with sensible defaults. It provides centralized configuration for:
 - AI model service endpoints and authentication
-- Database connections (SQLite and Elasticsearch)
+- Database connections (Elasticsearch and MariaDB)
 - Web server settings
 - Question generation parameters
 - Service feature toggles
@@ -31,9 +31,15 @@ class Config:
         LLM_ENGINE: LLM engine type (e.g., 'llama.cpp')
 
     Database Settings:
+        DATABASE_BACKEND: Database backend to use ('elasticsearch' or 'mariadb')
         ELASTICSEARCH_HOST: Elasticsearch server hostname
         ELASTICSEARCH_PORT: Elasticsearch server port
         ELASTICSEARCH_INDEX: Name of the Elasticsearch index
+        MARIADB_HOST: MariaDB server hostname
+        MARIADB_PORT: MariaDB server port
+        MARIADB_USER: MariaDB username
+        MARIADB_PASSWORD: MariaDB password
+        MARIADB_DATABASE: MariaDB database name
 
     Web UI Settings:
         FLASK_HOST: Flask server bind address
@@ -53,10 +59,20 @@ class Config:
     AI_MODEL_NAME = os.getenv('AI_MODEL_NAME', 'ai/llama3.2:1B-Q4_0')
     LLM_ENGINE = os.getenv('LLM_ENGINE', 'llama.cpp')
 
+    # Database Backend Selection
+    DATABASE_BACKEND = os.getenv('DATABASE_BACKEND', 'elasticsearch')  # 'elasticsearch' or 'mariadb'
+
     # Elasticsearch Configuration
     ELASTICSEARCH_HOST = os.getenv('ELASTICSEARCH_HOST', 'localhost')
     ELASTICSEARCH_PORT = int(os.getenv('ELASTICSEARCH_PORT', '9200'))
     ELASTICSEARCH_INDEX = os.getenv('ELASTICSEARCH_INDEX', 'quiz_history')
+
+    # MariaDB Configuration
+    MARIADB_HOST = os.getenv('MARIADB_HOST', 'localhost')
+    MARIADB_PORT = int(os.getenv('MARIADB_PORT', '3306'))
+    MARIADB_USER = os.getenv('MARIADB_USER', 'root')
+    MARIADB_PASSWORD = os.getenv('MARIADB_PASSWORD', '')
+    MARIADB_DATABASE = os.getenv('MARIADB_DATABASE', 'math_solver')
 
     # Web UI Configuration
     FLASK_HOST = os.getenv('FLASK_HOST', '0.0.0.0')

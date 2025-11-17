@@ -57,7 +57,7 @@ class QuizHistoryService:
             }
         }
 
-        self.db.create_index(self.index_name, mapping)
+        self.db.create_collection(self.index_name, mapping)
 
     def add_history(self, history: QuizHistory) -> bool:
         """
@@ -86,7 +86,7 @@ class QuizHistoryService:
                 "reviewed": False  # Default value for new records
             }
 
-            doc_id = self.db.index_document(self.index_name, doc)
+            doc_id = self.db.insert_record(self.index_name, doc)
             return doc_id is not None
         except Exception as e:
             print(f"Error adding history: {e}")
@@ -143,7 +143,7 @@ class QuizHistoryService:
             ]
 
             # Use database service search
-            hits = self.db.search_documents(
+            hits = self.db.search_records(
                 index_name=self.index_name,
                 query=query,
                 sort=sort,
@@ -190,7 +190,7 @@ class QuizHistoryService:
             query = {"match": {"username": username}}
             sort = [{"timestamp": {"order": "desc"}}]
 
-            hits = self.db.search_documents(
+            hits = self.db.search_records(
                 index_name=self.index_name,
                 query=query,
                 sort=sort,

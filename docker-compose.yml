@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Elasticsearch for Quiz History
+  # Elasticsearch for Quiz History (default database backend)
   elasticsearch:
     image: elasticsearch:9.2.1
     container_name: math-solver-elasticsearch
@@ -16,6 +16,29 @@ services:
     restart: unless-stopped
     networks:
       - math-solver-network
+    profiles:
+      - elasticsearch
+      - ""  # Default profile
+
+  # MariaDB 11.8 LTS (alternative database backend)
+  mariadb:
+    image: mariadb:11.8
+    container_name: math-solver-mariadb
+    environment:
+      - MYSQL_ROOT_PASSWORD=math_solver_password
+      - MYSQL_DATABASE=math_solver
+      - MYSQL_USER=math_solver
+      - MYSQL_PASSWORD=math_solver_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    restart: unless-stopped
+    networks:
+      - math-solver-network
+    profiles:
+      - mariadb
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
 
   # Web Application
   web:
@@ -27,8 +50,14 @@ services:
       - AI_MODEL_URL=http://host.docker.internal:12434
       - AI_MODEL_NAME=ai/llama3.2:1B-Q4_0
       - LLM_ENGINE=llama.cpp
+      - DATABASE_BACKEND=${DATABASE_BACKEND:-elasticsearch}
       - ELASTICSEARCH_HOST=elasticsearch
       - ELASTICSEARCH_PORT=9200
+      - MARIADB_HOST=mariadb
+      - MARIADB_PORT=3306
+      - MARIADB_USER=math_solver
+      - MARIADB_PASSWORD=math_solver_password
+      - MARIADB_DATABASE=math_solver
       - FLASK_HOST=0.0.0.0
       - FLASK_PORT=5000
     volumes:
@@ -38,9 +67,14 @@ services:
     restart: unless-stopped
     networks:
       - math-solver-network
+    profiles:
+      - elasticsearch
+      - mariadb
+      - ""  # Default profile
 
 volumes:
   es_data:
+  mariadb_data:
 
 networks:
   math-solver-network:

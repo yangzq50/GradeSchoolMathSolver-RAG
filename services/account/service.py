@@ -31,7 +31,7 @@ class AccountService:
         self.users_index = "users"
         self.answers_index = self.config.ELASTICSEARCH_INDEX
         self.db = get_database_service()
-        self._create_indices()
+        self._create_collections()
 
     def _is_connected(self) -> bool:
         """
@@ -42,13 +42,13 @@ class AccountService:
         """
         return self.db.is_connected()
 
-    def _create_indices(self):
+    def _create_collections(self):
         """
-        Create database indices with appropriate mappings
+        Create database collections with appropriate mappings
 
         Defines schema for efficient storage and retrieval of user data and answer history.
         """
-        # Users index mapping
+        # Users collection schema
         users_mapping = {
             "mappings": {
                 "properties": {
@@ -58,7 +58,7 @@ class AccountService:
             }
         }
 
-        # Answer history index mapping (unified schema)
+        # Answer history collection schema (unified schema)
         answers_mapping = {
             "mappings": {
                 "properties": {
@@ -75,9 +75,9 @@ class AccountService:
             }
         }
 
-        # Create indices using database service
-        self.db.create_index(self.users_index, users_mapping)
-        self.db.create_index(self.answers_index, answers_mapping)
+        # Create collections using database service
+        self.db.create_collection(self.users_index, users_mapping)
+        self.db.create_collection(self.answers_index, answers_mapping)
 
     def _validate_username(self, username: str) -> bool:
         """
@@ -122,7 +122,7 @@ class AccountService:
             }
 
             # Use create_document() which ensures it fails if user exists
-            return self.db.create_document(self.users_index, username, doc)
+            return self.db.create_record(self.users_index, username, doc)
         except Exception as e:
             print(f"Unexpected error creating user: {e}")
             return False
@@ -143,7 +143,7 @@ class AccountService:
         if not self._is_connected():
             return None
 
-        return self.db.get_document(self.users_index, username)
+        return self.db.get_record(self.users_index, username)
 
     def list_users(self) -> List[str]:
         """
@@ -156,7 +156,7 @@ class AccountService:
             return []
 
         try:
-            results = self.db.search_documents(
+            results = self.db.search_records(
                 index_name=self.users_index,
                 size=1000
             )
@@ -221,7 +221,7 @@ class AccountService:
                 "reviewed": False
             }
 
-            doc_id = self.db.index_document(self.answers_index, doc)
+            doc_id = self.db.insert_record(self.answers_index, doc)
 
             # Refresh index if requested (useful for testing)
             if refresh and doc_id:
@@ -259,7 +259,7 @@ class AccountService:
             query = {"term": {"username": username}}
             sort = [{"timestamp": {"order": "desc"}}]
 
-            all_answers = self.db.search_documents(
+            all_answers = self.db.search_records(
                 index_name=self.answers_index,
                 query=query,
                 sort=sort,
@@ -319,7 +319,7 @@ class AccountService:
             query = {"term": {"username": username}}
             sort = [{"timestamp": {"order": "desc"}}]
 
-            hits = self.db.search_documents(
+            hits = self.db.search_records(
                 index_name=self.answers_index,
                 query=query,
                 sort=sort,
