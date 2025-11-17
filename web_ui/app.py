@@ -375,7 +375,7 @@ def api_submit_immersive_answer(exam_id):
             exam_id=exam_id,
             participant_id=data['participant_id'],
             question_index=data['question_index'],
-            answer=float(data['answer'])
+            answer=int(data['answer'])
         )
 
         success = immersive_exam_service.submit_answer(answer_submission)

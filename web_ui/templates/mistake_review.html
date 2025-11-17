@@ -36,10 +36,7 @@
                 <p style="font-size: 20px; color: #d9534f; margin-top: 5px; font-weight: bold;" id="user-answer"></p>
             </div>
             
-            <div style="margin-bottom: 20px;">
-                <label style="color: #5cb85c; font-weight: bold;">Correct Answer:</label>
-                <p style="font-size: 20px; color: #5cb85c; margin-top: 5px; font-weight: bold;" id="correct-answer"></p>
-            </div>
+            <!-- Correct answer is hidden per requirements -->
             
             <div style="margin-bottom: 15px;">
                 <label style="color: #856404; font-weight: bold;">Category:</label>
@@ -141,7 +138,7 @@
             document.getElementById('question-text').textContent = data.question;
             document.getElementById('equation-text').textContent = data.equation;
             document.getElementById('user-answer').textContent = formatNumber(data.user_answer);
-            document.getElementById('correct-answer').textContent = formatNumber(data.correct_answer);
+            // Correct answer is hidden per requirements
             document.getElementById('category').textContent = data.category;
             document.getElementById('timestamp').textContent = new Date(data.timestamp).toLocaleString();
             
@@ -156,7 +153,7 @@
     }
 
     function checkAnswer() {
-        const retryAnswer = parseFloat(document.getElementById('retry-answer').value);
+        const retryAnswer = parseInt(document.getElementById('retry-answer').value);
         const feedbackDiv = document.getElementById('answer-feedback');
         
         if (isNaN(retryAnswer)) {
@@ -164,7 +161,7 @@
             return;
         }
         
-        const isCorrect = Math.abs(retryAnswer - currentMistake.correct_answer) < 0.01;
+        const isCorrect = retryAnswer === currentMistake.correct_answer;
         
         if (isCorrect) {
             feedbackDiv.style.background = '#d4edda';

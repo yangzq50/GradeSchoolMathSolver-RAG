@@ -5,7 +5,7 @@ Manages user accounts and statistics using SQLite with proper error handling and
 import os
 from datetime import datetime
 from typing import List, Optional
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from config import Config
@@ -31,8 +31,8 @@ class AnswerHistory(Base):  # type: ignore[valid-type,misc]
     username = Column(String(100), nullable=False)
     question = Column(String(500), nullable=False)
     equation = Column(String(200), nullable=False)
-    user_answer = Column(Float, nullable=False)
-    correct_answer = Column(Float, nullable=False)
+    user_answer = Column(Integer, nullable=False)
+    correct_answer = Column(Integer, nullable=False)
     is_correct = Column(Boolean, nullable=False)
     category = Column(String(50), nullable=False)
     timestamp = Column(DateTime, default=datetime.utcnow)
@@ -156,7 +156,7 @@ class AccountService:
             return []
 
     def record_answer(self, username: str, question: str, equation: str,
-                      user_answer: float, correct_answer: float,
+                      user_answer: int, correct_answer: int,
                       category: str) -> bool:
         """
         Record a user's answer with validation
@@ -191,7 +191,7 @@ class AccountService:
             if not self.get_user(username):
                 self.create_user(username)
 
-            is_correct = abs(user_answer - correct_answer) < 0.01
+            is_correct = user_answer == correct_answer
 
             answer = AnswerHistory(
                 username=username,

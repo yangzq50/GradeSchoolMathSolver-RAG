@@ -50,7 +50,7 @@ class ExamService:
 
     def process_human_exam(self, request: ExamRequest,
                            questions: List[Question],
-                           answers: List[float]) -> Dict[str, Any]:
+                           answers: List[int]) -> Dict[str, Any]:
         """
         Process exam results for a human user with pre-generated questions
 
@@ -71,7 +71,7 @@ class ExamService:
         correct_count = 0
 
         for idx, (question, user_answer) in enumerate(zip(questions, answers)):
-            is_correct = abs(user_answer - question.answer) < 0.01
+            is_correct = user_answer == question.answer
             if is_correct:
                 correct_count += 1
 
@@ -137,7 +137,7 @@ class ExamService:
         }
 
     def conduct_human_exam(self, request: ExamRequest,
-                           answers: List[float]) -> Dict[str, Any]:
+                           answers: List[int]) -> Dict[str, Any]:
         """
         Conduct exam for a human user
 
@@ -186,7 +186,7 @@ class ExamService:
             agent_result = agent.solve_question(request.username, question)
 
             is_correct = (agent_result['agent_answer'] is not None) and (
-                abs(agent_result['agent_answer'] - question.answer) < 0.01)
+                agent_result['agent_answer'] == question.answer)
             if is_correct:
                 correct_count += 1
 

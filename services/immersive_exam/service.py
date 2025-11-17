@@ -310,7 +310,7 @@ class ImmersiveExamService:
 
         # Record answer
         question = exam.questions[exam.current_question_index]
-        is_correct = abs(answer_submission.answer - question.answer) < 0.01
+        is_correct = answer_submission.answer == question.answer
 
         participant.answers[exam.current_question_index] = answer_submission.answer
         participant.scores[exam.current_question_index] = is_correct

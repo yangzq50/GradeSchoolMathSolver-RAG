@@ -51,8 +51,8 @@ class UserAnswer(BaseModel):
     username: str
     question: str
     equation: str
-    user_answer: float
-    correct_answer: float
+    user_answer: int
+    correct_answer: int
     is_correct: bool
     category: str
     timestamp: datetime
@@ -96,8 +96,8 @@ class QuizHistory(BaseModel):
     username: str
     question: str
     user_equation: str
-    user_answer: float
-    correct_answer: float
+    user_answer: int
+    correct_answer: int
     is_correct: bool
     category: str
     timestamp: datetime
@@ -193,7 +193,7 @@ class ImmersiveParticipant(BaseModel):
     participant_id: str
     participant_type: ParticipantType
     order: int = Field(ge=0)
-    answers: List[Optional[float]] = []
+    answers: List[Optional[int]] = []
     scores: List[bool] = []
     total_score: float = 0.0
     has_answered_current: bool = False
@@ -238,7 +238,7 @@ class ImmersiveExamAnswer(BaseModel):
     exam_id: str
     participant_id: str
     question_index: int = Field(ge=0)
-    answer: float
+    answer: int
 
 
 class ImmersiveExamStatus(BaseModel):
@@ -285,8 +285,8 @@ class TeacherFeedback(BaseModel):
     """
     equation: str
     question: str
-    correct_answer: float
-    user_answer: float
+    correct_answer: int
+    user_answer: int
     feedback: str
     explanation: str
 
@@ -310,8 +310,8 @@ class MistakeReview(BaseModel):
     username: str
     question: str
     equation: str
-    user_answer: float
-    correct_answer: float
+    user_answer: int
+    correct_answer: int
     category: str
     timestamp: datetime
     reviewed: bool

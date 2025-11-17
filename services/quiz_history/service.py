@@ -85,8 +85,8 @@ class QuizHistoryService:
                     "username": {"type": "keyword"},
                     "question": {"type": "text"},
                     "user_equation": {"type": "text"},
-                    "user_answer": {"type": "float"},
-                    "correct_answer": {"type": "float"},
+                    "user_answer": {"type": "integer"},
+                    "correct_answer": {"type": "integer"},
                     "is_correct": {"type": "boolean"},
                     "category": {"type": "keyword"},
                     "timestamp": {"type": "date"}
