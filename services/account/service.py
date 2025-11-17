@@ -40,12 +40,10 @@ class AccountService:
         Gracefully handles connection failures by operating in limited mode.
         """
         try:
+            # Elasticsearch 9.x uses URL-based initialization
+            es_url = f"http://{self.config.ELASTICSEARCH_HOST}:{self.config.ELASTICSEARCH_PORT}"
             self.es = Elasticsearch(
-                [{'host': self.config.ELASTICSEARCH_HOST,
-                  'port': self.config.ELASTICSEARCH_PORT,
-                  'scheme': 'http'}],
-                basic_auth=None,
-                verify_certs=False,
+                [es_url],
                 request_timeout=10,
                 max_retries=3,
                 retry_on_timeout=True
