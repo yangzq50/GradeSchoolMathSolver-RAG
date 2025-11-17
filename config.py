@@ -60,7 +60,7 @@ class Config:
     LLM_ENGINE = os.getenv('LLM_ENGINE', 'llama.cpp')
 
     # Database Backend Selection
-    DATABASE_BACKEND = os.getenv('DATABASE_BACKEND', 'elasticsearch')  # 'elasticsearch' or 'mariadb'
+    DATABASE_BACKEND = os.getenv('DATABASE_BACKEND', 'mariadb')  # 'elasticsearch' or 'mariadb'
 
     # Elasticsearch Configuration
     ELASTICSEARCH_HOST = os.getenv('ELASTICSEARCH_HOST', 'localhost')
