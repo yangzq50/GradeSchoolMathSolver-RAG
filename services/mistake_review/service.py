@@ -20,6 +20,21 @@ class MistakeReviewService:
     def __init__(self):
         self.account_service = AccountService()
 
+    def _build_filters_from_query(self, query):
+        """Convert Elasticsearch-style query to simple filters for MariaDB compatibility"""
+        if not query or 'bool' not in query:
+            return None
+
+        filters = {}
+        must_clauses = query.get('bool', {}).get('must', [])
+
+        for clause in must_clauses:
+            if 'term' in clause:
+                for field, value in clause['term'].items():
+                    filters[field] = value
+
+        return filters if filters else None
+
     def get_next_mistake(self, username: str) -> Optional[MistakeReview]:
         """
         Get the next unreviewed mistake for a user (FIFO order)
@@ -46,9 +61,13 @@ class MistakeReviewService:
             }
             sort = [{"timestamp": {"order": "asc"}}]
 
+            # Convert ES query to filters for MariaDB
+            filters = self._build_filters_from_query(query)
+
             hits = self.account_service.db.search_records(
                 collection_name=self.account_service.answers_index,
-                query=query,
+                query=None,  # Don't pass ES-style query to avoid conversion errors
+                filters=filters,
                 sort=sort,
                 limit=1
             )
@@ -59,6 +78,13 @@ class MistakeReviewService:
             hit = hits[0]
             source = hit['_source']
 
+            # Handle timestamp - MariaDB returns datetime objects, ES returns strings
+            timestamp_value = source['timestamp']
+            if isinstance(timestamp_value, datetime):
+                timestamp = timestamp_value
+            else:
+                timestamp = datetime.fromisoformat(timestamp_value.replace('Z', '+00:00'))
+
             return MistakeReview(
                 mistake_id=hit['_id'],
                 username=source['username'],
@@ -67,7 +93,7 @@ class MistakeReviewService:
                 user_answer=source.get('user_answer'),
                 correct_answer=source['correct_answer'],
                 category=source['category'],
-                timestamp=datetime.fromisoformat(source['timestamp']),
+                timestamp=timestamp,
                 reviewed=source.get('reviewed', False)
             )
         except Exception as e:
@@ -141,9 +167,13 @@ class MistakeReviewService:
                 }
             }
 
+            # Convert ES query to filters for MariaDB
+            filters = self._build_filters_from_query(query)
+
             return self.account_service.db.count_records(
                 self.account_service.answers_index,
-                query
+                query=None,  # Don't pass ES-style query to avoid conversion errors
+                filters=filters
             )
         except Exception as e:
             print(f"Error getting unreviewed count: {e}")
@@ -160,32 +190,42 @@ class MistakeReviewService:
         Returns:
             List of MistakeReview objects
         """
-        if not self.account_service.es:
+        if not self.account_service._is_connected():
             return []
 
         try:
             query = {
-                "size": limit,
-                "query": {
-                    "bool": {
-                        "must": [
-                            {"term": {"username": username}},
-                            {"term": {"is_correct": False}},
-                            {"term": {"reviewed": False}}
-                        ]
-                    }
-                },
-                "sort": [{"timestamp": {"order": "asc"}}]
+                "bool": {
+                    "must": [
+                        {"term": {"username": username}},
+                        {"term": {"is_correct": False}},
+                        {"term": {"reviewed": False}}
+                    ]
+                }
             }
+            sort = [{"timestamp": {"order": "asc"}}]
 
-            response = self.account_service.es.search(
-                index=self.account_service.answers_index,
-                body=query
+            # Convert ES query to filters for MariaDB
+            filters = self._build_filters_from_query(query)
+
+            hits = self.account_service.db.search_records(
+                collection_name=self.account_service.answers_index,
+                query=None,  # Don't pass ES-style query to avoid conversion errors
+                filters=filters,
+                sort=sort,
+                limit=limit
             )
 
             mistakes = []
-            for hit in response['hits']['hits']:
+            for hit in hits:
                 source = hit['_source']
+                # Handle timestamp - MariaDB returns datetime objects, ES returns strings
+                timestamp_value = source['timestamp']
+                if isinstance(timestamp_value, datetime):
+                    timestamp = timestamp_value
+                else:
+                    timestamp = datetime.fromisoformat(timestamp_value.replace('Z', '+00:00'))
+
                 mistakes.append(MistakeReview(
                     mistake_id=hit['_id'],
                     username=source['username'],
@@ -194,7 +234,7 @@ class MistakeReviewService:
                     user_answer=source.get('user_answer'),
                     correct_answer=source['correct_answer'],
                     category=source['category'],
-                    timestamp=datetime.fromisoformat(source['timestamp']),
+                    timestamp=timestamp,
                     reviewed=source.get('reviewed', False)
                 ))
 

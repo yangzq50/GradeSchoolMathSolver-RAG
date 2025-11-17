@@ -287,13 +287,15 @@ class ElasticsearchDatabaseService(DatabaseService):
             print(f"Error deleting document: {e}")
             return False
 
-    def count_records(self, collection_name: str, query: Optional[Dict[str, Any]] = None) -> int:
+    def count_records(self, collection_name: str, query: Optional[Dict[str, Any]] = None,
+                     filters: Optional[Dict[str, Any]] = None) -> int:
         """
         Count documents (records) matching a query in Elasticsearch
 
         Args:
             collection_name: Name of the index
             query: Elasticsearch query DSL
+            filters: Simple filters (converted to term queries if query is None)
 
         Returns:
             int: Number of matching documents
@@ -302,6 +304,11 @@ class ElasticsearchDatabaseService(DatabaseService):
             return 0
 
         try:
+            # If filters provided and no query, build a simple term query
+            if filters and not query:
+                must_clauses = [{"term": {k: v}} for k, v in filters.items()]
+                query = {"bool": {"must": must_clauses}}
+
             body = {"query": query} if query else {"query": {"match_all": {}}}
             response = self.es.count(index=collection_name, body=body)
             return response.get('count', 0)

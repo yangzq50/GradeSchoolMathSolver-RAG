@@ -166,13 +166,15 @@ class DatabaseService(ABC):
         pass
 
     @abstractmethod
-    def count_records(self, collection_name: str, query: Optional[Dict[str, Any]] = None) -> int:
+    def count_records(self, collection_name: str, query: Optional[Dict[str, Any]] = None,
+                     filters: Optional[Dict[str, Any]] = None) -> int:
         """
         Count records matching a query
 
         Args:
             collection_name: Name of the collection
             query: Search query (database-specific format)
+            filters: Simple filters for compatibility (key-value pairs)
 
         Returns:
             int: Number of matching records

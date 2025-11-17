@@ -596,13 +596,15 @@ class MariaDBDatabaseService(DatabaseService):
             print(f"Error deleting record: {e}")
             return False
 
-    def count_records(self, collection_name: str, query: Optional[Dict[str, Any]] = None) -> int:
+    def count_records(self, collection_name: str, query: Optional[Dict[str, Any]] = None,
+                     filters: Optional[Dict[str, Any]] = None) -> int:
         """
         Count rows (records) matching a query in MariaDB
 
         Args:
             collection_name: Name of the table
-            query: Search query
+            query: Search query (ignored for MariaDB)
+            filters: Simple filters (key-value pairs for WHERE clause)
 
         Returns:
             int: Number of matching records
@@ -620,7 +622,24 @@ class MariaDBDatabaseService(DatabaseService):
             where_sql = ""
             params = []
 
-            if query:
+            # Use filters if provided (preferred for MariaDB)
+            if filters:
+                # Column-based filtering
+                if 'data' not in columns:
+                    where_clauses = []
+                    for field, value in filters.items():
+                        where_clauses.append(f"`{field}` = %s")
+                        params.append(value)
+                    where_sql = f"WHERE {' AND '.join(where_clauses)}"
+                else:
+                    # JSON-based storage
+                    where_clauses = []
+                    for field, value in filters.items():
+                        where_clauses.append(f"JSON_EXTRACT(data, '$.{field}') = %s")
+                        params.append(json.dumps(value) if not isinstance(value, str) else value)
+                    where_sql = f"WHERE {' AND '.join(where_clauses)}"
+            elif query:
+                # Fall back to query if no filters
                 if 'data' in columns:
                     # JSON-based storage
                     where_clauses = []
