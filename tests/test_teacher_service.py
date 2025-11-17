@@ -16,15 +16,15 @@ def test_teacher_service():
     feedback = service.generate_feedback(
         equation="5 + 3",
         question="What is five plus three?",
-        correct_answer=8.0,
-        user_answer=7.0
+        correct_answer=8,
+        user_answer=7
     )
 
     if service.enabled:
         assert feedback is not None, "Feedback should be generated when service is enabled"
         assert feedback.equation == "5 + 3"
-        assert feedback.correct_answer == 8.0
-        assert feedback.user_answer == 7.0
+        assert feedback.correct_answer == 8
+        assert feedback.user_answer == 7
         assert len(feedback.feedback) > 0, "Feedback text should not be empty"
         assert len(feedback.explanation) > 0, "Explanation should not be empty"
         print("✅ Teacher Service: Feedback generated successfully")
@@ -42,9 +42,9 @@ def test_teacher_service_different_operations():
         return
 
     test_cases = [
-        ("10 - 4", "What is ten minus four?", 6.0, 5.0),
-        ("6 * 7", "What is six times seven?", 42.0, 40.0),
-        ("20 / 4", "What is twenty divided by four?", 5.0, 4.0),
+        ("10 - 4", "What is ten minus four?", 6, 5),
+        ("6 * 7", "What is six times seven?", 42, 40),
+        ("20 / 4", "What is twenty divided by four?", 5, 4),
     ]
 
     for equation, question, correct, wrong in test_cases:

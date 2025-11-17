@@ -278,8 +278,8 @@ if __name__ == "__main__":
             username="test_user",
             question="What is 5 + 3?",
             user_equation="5 + 3",
-            user_answer=8.0,
-            correct_answer=8.0,
+            user_answer=8,
+            correct_answer=8,
             is_correct=True,
             category="addition",
             timestamp=datetime.now()

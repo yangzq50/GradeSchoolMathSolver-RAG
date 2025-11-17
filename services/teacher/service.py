@@ -19,8 +19,8 @@ class TeacherService:
         self,
         equation: str,
         question: str,
-        correct_answer: float,
-        user_answer: float
+        correct_answer: int,
+        user_answer: int
     ) -> Optional[TeacherFeedback]:
         """
         Generate feedback for a wrong answer
