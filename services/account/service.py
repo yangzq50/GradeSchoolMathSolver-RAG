@@ -237,12 +237,13 @@ class AccountService:
                 return None
 
             # Get all answers for the user
-            query = {"term": {"username": username}}
+            # Use filters instead of query for compatibility with all backends
+            filters = {"username": username}
             sort = [{"timestamp": {"order": "desc"}}]
 
             all_answers = self.db.search_records(
                 collection_name=self.answers_index,
-                query=query,
+                filters=filters,
                 sort=sort,
                 limit=10000
             )
@@ -297,12 +298,13 @@ class AccountService:
         limit = max(1, min(limit, 1000))
 
         try:
-            query = {"term": {"username": username}}
+            # Use filters instead of query for compatibility with all backends
+            filters = {"username": username}
             sort = [{"timestamp": {"order": "desc"}}]
 
             hits = self.db.search_records(
                 collection_name=self.answers_index,
-                query=query,
+                filters=filters,
                 sort=sort,
                 limit=limit
             )
