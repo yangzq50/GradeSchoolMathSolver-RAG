@@ -45,13 +45,13 @@
     • Pydantic 2.5 (Data Validation)
     
   AI/ML:
-    • Ollama (AI Model Runner)
+    • Docker Model Runner (AI Model Runner)
     • LLaMA 3.2 (Language Model)
-    • Elasticsearch 8.11 (RAG Search)
+    • Optional: Elasticsearch 9.2 (RAG Search)
     
   Databases:
-    • SQLite (User Data & Statistics)
-    • Elasticsearch (Quiz History & RAG)
+    • MariaDB 11.8 LTS (Default - User Data & Statistics)
+    • Optional: Elasticsearch 9.2 (Full-text Search & RAG)
     
   Deployment:
     • Docker & Docker Compose

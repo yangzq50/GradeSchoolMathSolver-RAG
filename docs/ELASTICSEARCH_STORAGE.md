@@ -2,7 +2,34 @@
 
 ## Overview
 
-This document describes the Elasticsearch storage implementation for the GradeSchoolMathSolver-RAG system. All data persistence is handled through Elasticsearch 9.2.1.
+This document describes the Elasticsearch storage implementation for the GradeSchoolMathSolver-RAG system. Elasticsearch 9.2.1 is available as an **optional backend** for advanced full-text search and RAG (Retrieval-Augmented Generation) features.
+
+**Note**: MariaDB is the default database backend. Elasticsearch is recommended when you need advanced full-text search and semantic similarity features for RAG functionality.
+
+## When to Use Elasticsearch
+
+Consider using Elasticsearch instead of the default MariaDB backend when you need:
+
+- **Advanced full-text search**: Semantic matching and text analysis
+- **RAG similarity search**: Finding similar historical questions for context
+- **Real-time analytics**: Aggregations and statistics across large datasets
+- **Flexible schema**: Document-oriented storage without predefined structure
+
+For basic user management, answer history, and statistics, the default MariaDB backend is recommended for better performance and lower resource usage.
+
+## Configuration
+
+To use Elasticsearch as your database backend, set the following in your `.env` file:
+
+```bash
+# Switch to Elasticsearch backend
+DATABASE_BACKEND=elasticsearch
+
+# Elasticsearch Configuration
+ELASTICSEARCH_HOST=localhost
+ELASTICSEARCH_PORT=9200
+ELASTICSEARCH_INDEX=quiz_history
+```
 
 ## Architecture
 
@@ -14,17 +41,19 @@ The system uses two complementary services for data operations:
    - Manages user accounts and answer history
    - Handles user statistics calculations
    - Primary interface for storing quiz answers
+   - Works with both Elasticsearch and MariaDB backends
 
 2. **QuizHistoryService** (`services/quiz_history/service.py`)
    - Provides RAG (Retrieval-Augmented Generation) functionality
    - Enables similarity-based search of historical questions
    - Used for personalized learning recommendations
+   - Optimized for Elasticsearch's full-text search capabilities
 
 ### Unified Storage Design
 
-Both services share the same Elasticsearch indices to prevent data duplication:
-- **users** index: User account information
-- **quiz_history** index: All answer history with unified schema
+Both services share the same database indices/tables to prevent data duplication:
+- **users** index/table: User account information
+- **quiz_history** index/table: All answer history with unified schema
 
 ⚠️ **Important**: Data should be recorded **once** through `AccountService.record_answer()` to prevent duplicates.
 
@@ -324,9 +353,13 @@ Fixed by auto-converting timestamps in `get_answer_history()`.
 2. Check URL-based initialization (ES 9.x requirement)
 3. Verify environment variables
 
-## API Reference
+## Additional Resources
 
-Detailed inline documentation available in:
-- `services/account/service.py` - AccountService
-- `services/quiz_history/service.py` - QuizHistoryService
-- `services/mistake_review/service.py` - MistakeReviewService
+- [Database Service Architecture Documentation](DATABASE_SERVICE.md)
+- [MariaDB Integration Documentation](MARIADB_INTEGRATION.md)
+- [Elasticsearch 9.x Documentation](https://www.elastic.co/guide/en/elasticsearch/reference/9.0/index.html)
+- Detailed inline documentation available in:
+  - `services/account/service.py` - AccountService
+  - `services/quiz_history/service.py` - QuizHistoryService
+  - `services/mistake_review/service.py` - MistakeReviewService
+  - `services/database/elasticsearch_backend.py` - Elasticsearch backend implementation
