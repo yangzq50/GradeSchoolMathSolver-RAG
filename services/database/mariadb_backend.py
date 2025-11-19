@@ -10,6 +10,7 @@ type safety compared to generic JSON storage.
 """
 from typing import List, Optional, Dict, Any
 import json
+import time
 import mysql.connector
 from mysql.connector import Error as MySQLError
 from config import Config
@@ -24,47 +25,83 @@ class MariaDBDatabaseService(DatabaseService):
     Maps generic database operations to SQL operations (tables, rows, etc.).
     """
 
-    def __init__(self):
-        """Initialize MariaDB database service"""
+    def __init__(self, max_retries: int = 12, retry_delay: float = 5.0):
+        """
+        Initialize MariaDB database service with retry logic
+
+        Args:
+            max_retries: Maximum number of connection attempts (default: 12)
+            retry_delay: Initial delay between retries in seconds (default: 5.0)
+        """
         self.config = Config()
         self.connection = None
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
         self.connect()
 
     def connect(self) -> bool:
         """
-        Establish connection to MariaDB
+        Establish connection to MariaDB with retry logic
+
+        Attempts to connect to MariaDB with exponential backoff retry logic.
+        This ensures the application can recover from temporary unavailability,
+        such as during Docker container startup.
 
         Returns:
             bool: True if connection successful, False otherwise
         """
-        try:
-            self.connection = mysql.connector.connect(
-                host=getattr(self.config, 'MARIADB_HOST', 'localhost'),
-                port=getattr(self.config, 'MARIADB_PORT', 3306),
-                user=getattr(self.config, 'MARIADB_USER', 'root'),
-                password=getattr(self.config, 'MARIADB_PASSWORD', ''),
-                database=getattr(self.config, 'MARIADB_DATABASE', 'math_solver'),
-                autocommit=True
-            )
+        attempt = 0
 
-            if self.connection.is_connected():
-                print("MariaDB connected successfully")
-                return True
-            else:
-                print("Warning: MariaDB connection failed")
+        while attempt < self.max_retries:
+            try:
+                self.connection = mysql.connector.connect(
+                    host=getattr(self.config, 'MARIADB_HOST', 'localhost'),
+                    port=getattr(self.config, 'MARIADB_PORT', 3306),
+                    user=getattr(self.config, 'MARIADB_USER', 'root'),
+                    password=getattr(self.config, 'MARIADB_PASSWORD', ''),
+                    database=getattr(self.config, 'MARIADB_DATABASE', 'math_solver'),
+                    autocommit=True,
+                    connect_timeout=10
+                )
+
+                if self.connection.is_connected():
+                    if attempt > 0:
+                        print(f"MariaDB connected successfully after {attempt + 1} attempt(s)")
+                    else:
+                        print("MariaDB connected successfully")
+                    return True
+                else:
+                    print("Warning: MariaDB connection failed")
+                    self.connection = None
+                    return False
+
+            except MySQLError as e:
+                attempt += 1
+                if attempt < self.max_retries:
+                    wait_time = self.retry_delay * (2 ** (attempt - 1))  # Exponential backoff
+                    print(f"MariaDB connection attempt {attempt}/{self.max_retries} failed: {e}")
+                    print(f"Retrying in {wait_time:.1f} seconds...")
+                    time.sleep(wait_time)
+                else:
+                    print(f"ERROR: Could not connect to MariaDB after {self.max_retries} attempts")
+                    print(f"Last error: {e}")
+                    print("Please ensure:")
+                    print("  1. MariaDB container is running")
+                    print("  2. Database credentials are correct")
+                    print("  3. Network connectivity is established")
                 self.connection = None
-                return False
+            except Exception as e:
+                attempt += 1
+                if attempt < self.max_retries:
+                    wait_time = self.retry_delay * (2 ** (attempt - 1))
+                    print(f"Unexpected error connecting to MariaDB (attempt {attempt}/{self.max_retries}): {e}")
+                    print(f"Retrying in {wait_time:.1f} seconds...")
+                    time.sleep(wait_time)
+                else:
+                    print(f"ERROR: Unexpected error connecting to MariaDB after {self.max_retries} attempts: {e}")
+                self.connection = None
 
-        except MySQLError as e:
-            print(f"Warning: Could not connect to MariaDB: {e}")
-            print("Database service will operate in limited mode")
-            self.connection = None
-            return False
-        except Exception as e:
-            print(f"Warning: Unexpected error connecting to MariaDB: {e}")
-            print("Database service will operate in limited mode")
-            self.connection = None
-            return False
+        return False
 
     def is_connected(self) -> bool:
         """

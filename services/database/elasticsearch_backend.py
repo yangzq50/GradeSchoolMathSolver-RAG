@@ -4,6 +4,7 @@ Elasticsearch Database Backend
 Implementation of DatabaseService interface using Elasticsearch.
 """
 from typing import List, Optional, Dict, Any
+import time
 from elasticsearch import Elasticsearch, ConnectionError as ESConnectionError, NotFoundError, ConflictError
 from config import Config
 from .service import DatabaseService
@@ -17,48 +18,81 @@ class ElasticsearchDatabaseService(DatabaseService):
     Maps generic database operations to Elasticsearch-specific operations (indices, documents, etc.).
     """
 
-    def __init__(self) -> None:
-        """Initialize Elasticsearch database service"""
+    def __init__(self, max_retries: int = 12, retry_delay: float = 5.0) -> None:
+        """
+        Initialize Elasticsearch database service with retry logic
+
+        Args:
+            max_retries: Maximum number of connection attempts (default: 12)
+            retry_delay: Initial delay between retries in seconds (default: 5.0)
+        """
         self.config = Config()
         self.es: Optional[Elasticsearch] = None
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
         self.connect()
 
     def connect(self) -> bool:
         """
-        Establish connection to Elasticsearch
+        Establish connection to Elasticsearch with retry logic
+
+        Attempts to connect to Elasticsearch with exponential backoff retry logic.
+        This ensures the application can recover from temporary unavailability,
+        such as during Docker container startup.
 
         Returns:
             bool: True if connection successful, False otherwise
         """
-        try:
-            # Elasticsearch 9.x uses URL-based initialization
-            es_url = f"http://{self.config.ELASTICSEARCH_HOST}:{self.config.ELASTICSEARCH_PORT}"
-            self.es = Elasticsearch(
-                [es_url],
-                request_timeout=10,
-                max_retries=3,
-                retry_on_timeout=True
-            )
+        attempt = 0
 
-            # Verify connection
-            if not self.es.ping():
-                print("Warning: Elasticsearch ping failed")
+        while attempt < self.max_retries:
+            try:
+                # Elasticsearch 9.x uses URL-based initialization
+                es_url = f"http://{self.config.ELASTICSEARCH_HOST}:{self.config.ELASTICSEARCH_PORT}"
+                self.es = Elasticsearch(
+                    [es_url],
+                    request_timeout=10,
+                    max_retries=3,
+                    retry_on_timeout=True
+                )
+
+                # Verify connection
+                if not self.es.ping():
+                    raise ESConnectionError("Elasticsearch ping failed")
+
+                if attempt > 0:
+                    print(f"Elasticsearch connected successfully after {attempt + 1} attempt(s)")
+                else:
+                    print("Elasticsearch connected successfully")
+                return True
+
+            except ESConnectionError as e:
+                attempt += 1
+                if attempt < self.max_retries:
+                    wait_time = self.retry_delay * (2 ** (attempt - 1))  # Exponential backoff
+                    print(f"Elasticsearch connection attempt {attempt}/{self.max_retries} failed: {e}")
+                    print(f"Retrying in {wait_time:.1f} seconds...")
+                    time.sleep(wait_time)
+                else:
+                    print(f"ERROR: Could not connect to Elasticsearch after {self.max_retries} attempts")
+                    print(f"Last error: {e}")
+                    print("Please ensure:")
+                    print("  1. Elasticsearch container is running")
+                    print("  2. Elasticsearch host and port are correct")
+                    print("  3. Network connectivity is established")
                 self.es = None
-                return False
+            except Exception as e:
+                attempt += 1
+                if attempt < self.max_retries:
+                    wait_time = self.retry_delay * (2 ** (attempt - 1))
+                    print(f"Unexpected error connecting to Elasticsearch (attempt {attempt}/{self.max_retries}): {e}")
+                    print(f"Retrying in {wait_time:.1f} seconds...")
+                    time.sleep(wait_time)
+                else:
+                    print(f"ERROR: Unexpected error connecting to Elasticsearch after {self.max_retries} attempts: {e}")
+                self.es = None
 
-            print("Elasticsearch connected successfully")
-            return True
-
-        except ESConnectionError as e:
-            print(f"Warning: Could not connect to Elasticsearch: {e}")
-            print("Database service will operate in limited mode")
-            self.es = None
-            return False
-        except Exception as e:
-            print(f"Warning: Unexpected error connecting to Elasticsearch: {e}")
-            print("Database service will operate in limited mode")
-            self.es = None
-            return False
+        return False
 
     def is_connected(self) -> bool:
         """
