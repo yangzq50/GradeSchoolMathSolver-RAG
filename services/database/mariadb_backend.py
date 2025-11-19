@@ -64,7 +64,7 @@ class MariaDBDatabaseService(DatabaseService):
                     connect_timeout=10
                 )
 
-                if self.connection.is_connected():
+                if self.connection is not None and self.connection.is_connected():
                     if attempt > 0:
                         print(f"MariaDB connected successfully after {attempt + 1} attempt(s)")
                     else:
