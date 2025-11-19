@@ -4,7 +4,6 @@ Tests for database connection retry logic
 import sys
 import os
 from unittest.mock import Mock, patch
-import time
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -51,7 +50,6 @@ def test_mariadb_connection_retry_exhausted():
 def test_elasticsearch_connection_retry_success_on_second_attempt():
     """Test Elasticsearch connection succeeds on second attempt"""
     from services.database.elasticsearch_backend import ElasticsearchDatabaseService
-    from elasticsearch import ConnectionError as ESConnectionError
 
     with patch('services.database.elasticsearch_backend.Elasticsearch') as mock_es_class:
         # First attempt fails, second succeeds
@@ -101,7 +99,8 @@ def test_exponential_backoff():
                 sleep_times.append(duration)
             mock_sleep.side_effect = record_sleep
 
-            service = MariaDBDatabaseService(max_retries=4, retry_delay=1.0)
+            # Service creation will fail, but we're just testing the sleep times
+            _ = MariaDBDatabaseService(max_retries=4, retry_delay=1.0)
 
         # Verify exponential backoff: 1.0, 2.0, 4.0 seconds
         assert len(sleep_times) == 3
