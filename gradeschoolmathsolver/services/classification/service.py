@@ -129,7 +129,7 @@ Respond with ONLY the category name, nothing else."""
                 # Extract content from OpenAI-compatible response
                 choices = result.get('choices', [])
                 if choices:
-                    category = choices[0].get('message', {}).get('content', '').strip().lower()
+                    category = str(choices[0].get('message', {}).get('content', '')).strip().lower()
                     # Validate the category
                     if category in self.categories:
                         return category

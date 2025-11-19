@@ -181,7 +181,7 @@ REASONING: [brief explanation of how you solved it]"""
 
 if __name__ == "__main__":
     # Test the agent
-    from models import Question
+    from gradeschoolmathsolver.models import Question as TestQuestion
 
     # Create agent with basic config
     agent_config = AgentConfig(
@@ -193,7 +193,7 @@ if __name__ == "__main__":
     agent = AgentService(agent_config)
 
     # Test question
-    test_question = Question(
+    test_question = TestQuestion(
         equation="5 + 3",
         question_text="What is 5 + 3?",
         answer=8,

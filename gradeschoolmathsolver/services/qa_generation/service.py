@@ -163,7 +163,7 @@ class QAGenerationService:
                 if choices:
                     content = choices[0].get('message', {}).get('content', '').strip()
                     if content:
-                        return content
+                        return str(content)
             return ""
         except (Timeout, RequestException):
             return ""

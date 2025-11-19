@@ -214,7 +214,7 @@ class QuizHistoryService:
         Returns:
             True if connected and responsive, False otherwise
         """
-        return self.db.is_connected()
+        return bool(self.db.is_connected())
 
 
 if __name__ == "__main__":

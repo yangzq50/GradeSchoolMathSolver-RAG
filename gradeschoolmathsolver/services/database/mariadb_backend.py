@@ -123,7 +123,7 @@ class MariaDBDatabaseService(DatabaseService):
         if self.connection is None:
             return False
         try:
-            return self.connection.is_connected()
+            return bool(self.connection.is_connected())
         except Exception:
             return False
 
@@ -354,7 +354,8 @@ class MariaDBDatabaseService(DatabaseService):
                 cursor.close()
 
                 if row and row[0]:
-                    return json.loads(row[0])
+                    result: Dict[str, Any] = json.loads(row[0])
+                    return result
                 return None
             else:
                 # Column-based storage
@@ -640,7 +641,7 @@ class MariaDBDatabaseService(DatabaseService):
             cursor.execute(delete_query, (record_id,))
             affected = cursor.rowcount
             cursor.close()
-            return affected > 0
+            return bool(affected > 0)
 
         except MySQLError as e:
             print(f"Error deleting record: {e}")

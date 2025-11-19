@@ -116,7 +116,8 @@ giving them the answer."""
                 # Extract content from OpenAI-compatible response
                 choices = result.get('choices', [])
                 if choices:
-                    return choices[0].get('message', {}).get('content', '').strip()
+                    content = choices[0].get('message', {}).get('content', '').strip()
+                    return str(content) if content else None
 
         except Exception as e:
             print(f"Error generating AI feedback: {e}")

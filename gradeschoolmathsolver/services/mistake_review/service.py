@@ -134,11 +134,11 @@ class MistakeReviewService:
 
             # Refresh index if requested (useful for testing)
             if refresh and success:
-                from services.database.elasticsearch_backend import ElasticsearchDatabaseService
+                from gradeschoolmathsolver.services.database.elasticsearch_backend import ElasticsearchDatabaseService
                 if isinstance(self.account_service.db, ElasticsearchDatabaseService):
                     self.account_service.db.refresh_index(self.account_service.answers_index)
 
-            return success
+            return bool(success)
         except Exception as e:
             print(f"Error marking mistake as reviewed: {e}")
             return False
@@ -170,11 +170,12 @@ class MistakeReviewService:
             # Convert ES query to filters for MariaDB
             filters = self._build_filters_from_query(query)
 
-            return self.account_service.db.count_records(
+            count = self.account_service.db.count_records(
                 self.account_service.answers_index,
                 query=None,  # Don't pass ES-style query to avoid conversion errors
                 filters=filters
             )
+            return int(count)
         except Exception as e:
             print(f"Error getting unreviewed count: {e}")
             return 0
@@ -250,7 +251,7 @@ if __name__ == "__main__":
     import os
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-    from services.account import AccountService  # noqa: E402, F811
+    from gradeschoolmathsolver.services.account import AccountService  # noqa: E402
 
     # Create test data
     account_service = AccountService()

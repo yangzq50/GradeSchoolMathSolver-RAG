@@ -200,7 +200,8 @@ class ElasticsearchDatabaseService(DatabaseService):
                 result = self.es.index(index=collection_name, id=record_id, document=record)
             else:
                 result = self.es.index(index=collection_name, document=record)
-            return result.get('_id')
+            doc_id = result.get('_id')
+            return str(doc_id) if doc_id else None
         except Exception as e:
             print(f"Error indexing document: {e}")
             return None
@@ -221,7 +222,8 @@ class ElasticsearchDatabaseService(DatabaseService):
 
         try:
             result = self.es.get(index=collection_name, id=record_id)
-            return result.get('_source')
+            source = result.get('_source')
+            return dict(source) if source else None
         except NotFoundError:
             return None
         except Exception as e:
@@ -281,7 +283,8 @@ class ElasticsearchDatabaseService(DatabaseService):
                 body["sort"] = sort
 
             response = self.es.search(index=collection_name, body=body)
-            return response['hits']['hits']
+            hits = response['hits']['hits']
+            return [dict(hit) for hit in hits]
         except Exception as e:
             print(f"Error searching documents: {e}")
             return []
@@ -357,7 +360,8 @@ class ElasticsearchDatabaseService(DatabaseService):
 
             body = {"query": query} if query else {"query": {"match_all": {}}}
             response = self.es.count(index=collection_name, body=body)
-            return response.get('count', 0)
+            count = response.get('count', 0)
+            return int(count)
         except Exception as e:
             print(f"Error counting documents: {e}")
             return 0

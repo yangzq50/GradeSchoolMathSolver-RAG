@@ -46,7 +46,7 @@ class AccountService:
         Returns:
             bool: True if connected, False otherwise
         """
-        return self.db.is_connected()
+        return bool(self.db.is_connected())
 
     def _create_collections(self):
         """
@@ -109,7 +109,7 @@ class AccountService:
             success = self.db.create_record(self.users_index, username, user_record.to_dict())
             if not success:
                 print(f"User '{username}' already exists")
-            return success
+            return bool(success)
         except Exception as e:
             print(f"Unexpected error creating user: {e}")
             return False
@@ -130,7 +130,8 @@ class AccountService:
         if not self._is_connected():
             return None
 
-        return self.db.get_record(self.users_index, username)
+        result = self.db.get_record(self.users_index, username)
+        return dict(result) if result else None
 
     def list_users(self) -> List[str]:
         """
