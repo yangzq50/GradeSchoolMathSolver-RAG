@@ -38,13 +38,13 @@ jobs:
           });
           
           const customBody = `
-          **Docker Image**: \`${{ github.repository_owner }}/gradeschoolmathsolver:${{ steps.version.outputs.version }}\`
+          **Docker Image**: \`${{ github.repository_owner }}/gradeschoolmathsolver-rag:${{ steps.version.outputs.version }}\`
           
           ## Installation
           
           ### Using Docker
           \`\`\`bash
-          docker pull ${{ github.repository_owner }}/gradeschoolmathsolver:${{ steps.version.outputs.version }}
+          docker pull ${{ github.repository_owner }}/gradeschoolmathsolver-rag:${{ steps.version.outputs.version }}
           \`\`\`
           
           ### Using pip

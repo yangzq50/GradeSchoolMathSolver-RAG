@@ -172,16 +172,16 @@ For a release `v1.2.3`, the following tags are created:
 
 ```bash
 # Specific version (recommended for production)
-docker pull yangzq50/gradeschoolmathsolver:1.0.0
+docker pull yangzq50/gradeschoolmathsolver-rag:1.0.0
 
 # Latest patch version
-docker pull yangzq50/gradeschoolmathsolver:1.0
+docker pull yangzq50/gradeschoolmathsolver-rag:1.0
 
 # Latest minor version
-docker pull yangzq50/gradeschoolmathsolver:1
+docker pull yangzq50/gradeschoolmathsolver-rag:1
 
 # Latest release
-docker pull yangzq50/gradeschoolmathsolver:latest
+docker pull yangzq50/gradeschoolmathsolver-rag:latest
 ```
 
 ## Customization
@@ -264,7 +264,7 @@ body: |
 
 ### Verifying Docker Hub Publication
 
-1. Visit `https://hub.docker.com/r/<username>/gradeschoolmathsolver`
+1. Visit `https://hub.docker.com/r/<username>/gradeschoolmathsolver-rag`
 2. Check **Tags** tab for new version tags
 3. Verify **Overview** tab description matches README.md
 

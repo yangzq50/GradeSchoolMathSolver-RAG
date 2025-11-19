@@ -6,7 +6,7 @@
 
 An AI-powered Grade School Math Solver with RAG (Retrieval-Augmented Generation). Automatically generates arithmetic problems, tracks correct and incorrect answers, and provides personalized practice and exams. Ideal for learning, testing, and building adaptive math tutoring agents.
 
-**📦 Docker Hub**: [yangzq50/gradeschoolmathsolver](https://hub.docker.com/r/yangzq50/gradeschoolmathsolver)
+**📦 Docker Hub**: [yangzq50/gradeschoolmathsolver-rag](https://hub.docker.com/r/yangzq50/gradeschoolmathsolver-rag)
 
 ![Homepage](https://github.com/user-attachments/assets/7e8d6f0d-c8af-4170-be71-77402945fe14)
 
@@ -127,10 +127,10 @@ Pull and run the latest Docker image from Docker Hub:
 
 ```bash
 # Pull the latest image
-docker pull yangzq50/gradeschoolmathsolver:latest
+docker pull yangzq50/gradeschoolmathsolver-rag:latest
 
 # Or pull a specific version
-docker pull yangzq50/gradeschoolmathsolver:1.0.0
+docker pull yangzq50/gradeschoolmathsolver-rag:1.0.0
 ```
 
 Then use with `docker-compose.yml` by modifying the web service to use the pre-built image instead of building locally.
@@ -776,7 +776,7 @@ This will automatically:
 ### Docker Hub Images
 
 Pre-built Docker images are available at:
-- **Repository**: [yangzq50/gradeschoolmathsolver](https://hub.docker.com/r/yangzq50/gradeschoolmathsolver)
+- **Repository**: [yangzq50/gradeschoolmathsolver-rag](https://hub.docker.com/r/yangzq50/gradeschoolmathsolver-rag)
 - **Tags**: Each release creates multiple tags for flexibility
   - `1.0.0` - Specific version (recommended for production)
   - `1.0` - Latest patch version
