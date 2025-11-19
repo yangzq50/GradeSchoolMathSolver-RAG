@@ -98,7 +98,7 @@ class AccountService:
             return False
 
         if not self._is_connected():
-            print("Database not connected")
+            print("ERROR: Cannot create user - Database not connected")
             return False
 
         try:
@@ -106,7 +106,10 @@ class AccountService:
             user_record = UserRecord.create_new(username)
 
             # Use create_record() which ensures it fails if user exists
-            return self.db.create_record(self.users_index, username, user_record.to_dict())
+            success = self.db.create_record(self.users_index, username, user_record.to_dict())
+            if not success:
+                print(f"User '{username}' already exists")
+            return success
         except Exception as e:
             print(f"Unexpected error creating user: {e}")
             return False

@@ -43,3 +43,6 @@ jobs:
     - name: Run tests with pytest
       run: |
         pytest tests/ -v --tb=short
+      env:
+        DB_MAX_RETRIES: 2
+        DB_RETRY_DELAY: 0.5

@@ -144,12 +144,17 @@ def api_create_user():
     if not username:
         return jsonify({'error': 'Username is required'}), 400
 
+    # Check database connection first
+    if not account_service._is_connected():
+        error_msg = 'Database not connected. Please ensure the database service is running and try again.'
+        return jsonify({'error': error_msg}), 503
+
     success = account_service.create_user(username)
 
     if success:
         return jsonify({'message': 'User created', 'username': username}), 201
     else:
-        return jsonify({'error': 'User already exists'}), 409
+        return jsonify({'error': 'User already exists or invalid username format'}), 409
 
 
 @app.route('/api/exam/human', methods=['POST'])
