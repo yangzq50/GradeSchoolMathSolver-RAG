@@ -1,8 +1,12 @@
 # GradeSchoolMathSolver-RAG
 
 [![CI](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/ci.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/ci.yml)
+[![Release](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/release.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/release.yml)
+[![Docker Publish](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/docker-publish.yml)
 
 An AI-powered Grade School Math Solver with RAG (Retrieval-Augmented Generation). Automatically generates arithmetic problems, tracks correct and incorrect answers, and provides personalized practice and exams. Ideal for learning, testing, and building adaptive math tutoring agents.
+
+**📦 Docker Hub**: [yangzq50/gradeschoolmathsolver](https://hub.docker.com/r/yangzq50/gradeschoolmathsolver)
 
 ![Homepage](https://github.com/user-attachments/assets/7e8d6f0d-c8af-4170-be71-77402945fe14)
 
@@ -116,6 +120,22 @@ The system consists of 12 main components:
 - 8GB+ RAM recommended (16GB+ recommended for larger models)
 
 ### Installation
+
+#### Option 1: Using Pre-built Docker Image (Recommended for Quick Start)
+
+Pull and run the latest Docker image from Docker Hub:
+
+```bash
+# Pull the latest image
+docker pull yangzq50/gradeschoolmathsolver:latest
+
+# Or pull a specific version
+docker pull yangzq50/gradeschoolmathsolver:1.0.0
+```
+
+Then use with `docker-compose.yml` by modifying the web service to use the pre-built image instead of building locally.
+
+#### Option 2: Install from Source
 
 1. **Clone the repository**
    ```bash
@@ -732,6 +752,41 @@ For detailed troubleshooting, see [MariaDB Integration Documentation](docs/MARIA
    ```
 
 3. Restart application to recreate tables
+
+## 📦 Releases and Docker Publishing
+
+This project uses automated GitHub Actions workflows to create releases and publish Docker images.
+
+### Creating a Release
+
+To create a new release:
+
+1. Ensure all changes are committed and pushed to the main branch
+2. Create and push a semantic version tag:
+   ```bash
+   git tag -a v1.0.0 -m "Release version 1.0.0"
+   git push origin v1.0.0
+   ```
+
+This will automatically:
+- Create a GitHub release with auto-generated release notes
+- Build and publish multi-platform Docker images to Docker Hub
+- Tag the Docker image with version numbers (e.g., `1.0.0`, `1.0`, `1`, `latest`)
+
+### Docker Hub Images
+
+Pre-built Docker images are available at:
+- **Repository**: [yangzq50/gradeschoolmathsolver](https://hub.docker.com/r/yangzq50/gradeschoolmathsolver)
+- **Tags**: Each release creates multiple tags for flexibility
+  - `1.0.0` - Specific version (recommended for production)
+  - `1.0` - Latest patch version
+  - `1` - Latest minor version
+  - `latest` - Latest release
+
+### For Maintainers
+
+Detailed instructions for setting up and customizing the release workflows:
+- [Release Workflow Documentation](docs/RELEASE_WORKFLOW.md) - Complete guide for GitHub releases and Docker Hub publishing
 
 ## 📝 License
 

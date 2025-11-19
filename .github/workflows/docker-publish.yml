@@ -1,0 +1,85 @@
+name: Docker Hub Publish
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Matches semantic version tags like v1.0.0, v2.1.3, etc.
+
+env:
+  DOCKER_IMAGE_NAME: gradeschoolmathsolver
+
+permissions:
+  contents: read  # Required to checkout code
+  packages: write  # Required for Docker operations
+
+jobs:
+  docker-build-and-push:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    
+    - name: Extract version from tag
+      id: version
+      run: |
+        # Extract version without 'v' prefix (e.g., v1.0.0 -> 1.0.0)
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        
+        # Extract major, minor versions (e.g., 1.0.0 -> 1.0, 1)
+        MAJOR=$(echo $VERSION | cut -d. -f1)
+        MINOR=$(echo $VERSION | cut -d. -f1-2)
+        echo "major=$MAJOR" >> $GITHUB_OUTPUT
+        echo "minor=$MINOR" >> $GITHUB_OUTPUT
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: |
+          ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ steps.version.outputs.version }}
+          ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ steps.version.outputs.minor }}
+          ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ steps.version.outputs.major }}
+          ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        labels: |
+          org.opencontainers.image.title=GradeSchoolMathSolver-RAG
+          org.opencontainers.image.description=AI-powered Grade School Math Solver with RAG
+          org.opencontainers.image.version=${{ steps.version.outputs.version }}
+          org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          org.opencontainers.image.revision=${{ github.sha }}
+          org.opencontainers.image.licenses=MIT
+    
+    - name: Update Docker Hub description
+      run: |
+        # Login to Docker Hub and get token
+        TOKEN=$(curl -s -X POST \
+          -H "Content-Type: application/json" \
+          -d "{\"username\": \"${{ secrets.DOCKERHUB_USERNAME }}\", \"password\": \"${{ secrets.DOCKERHUB_TOKEN }}\"}" \
+          https://hub.docker.com/v2/users/login/ | jq -r .token)
+        
+        # Update repository description
+        README_CONTENT=$(cat README.md | jq -Rs .)
+        SHORT_DESC="AI-powered Grade School Math Solver with RAG"
+        
+        curl -X PATCH \
+          -H "Authorization: JWT ${TOKEN}" \
+          -H "Content-Type: application/json" \
+          -d "{\"full_description\": ${README_CONTENT}, \"description\": \"${SHORT_DESC}\"}" \
+          "https://hub.docker.com/v2/repositories/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}/"
