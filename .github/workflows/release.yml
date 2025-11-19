@@ -27,12 +27,9 @@ jobs:
         echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
     
     - name: Create GitHub Release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ steps.version.outputs.tag }}
-        release_name: Release ${{ steps.version.outputs.tag }}
+        name: Release ${{ steps.version.outputs.tag }}
         body: |
           ## What's Changed
           
@@ -55,3 +52,4 @@ jobs:
           For more information, see the [README](https://github.com/${{ github.repository }}/blob/${{ steps.version.outputs.tag }}/README.md).
         draft: false
         prerelease: false
+        generate_release_notes: true
