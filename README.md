@@ -276,6 +276,27 @@ If you prefer to run everything locally without Docker:
 4. **Install the package** with `pip install .`
 5. **Run the web application** with `gradeschoolmathsolver`
 
+## 💡 Examples
+
+The `examples/` directory contains demonstration scripts for various features:
+
+### Embedding Service Example
+
+Run the embedding service demonstration:
+
+```bash
+python examples/embedding_example.py
+```
+
+This example shows:
+- How to initialize and use the EmbeddingService
+- Single and batch embedding generation
+- Service availability checking
+- Error handling and edge cases
+- Using embeddings for RAG similarity search
+
+See [examples/README.md](examples/README.md) for more details.
+
 ## 📖 Usage
 
 ### Taking an Exam (Human)
@@ -642,7 +663,10 @@ GradeSchoolMathSolver-RAG/
 │           ├── immersive_exam_create.html
 │           ├── immersive_exam_live.html
 │           ├── immersive_exam_results.html
-│           └── mistake_review.html      # (NEW)
+│           └── mistake_review.html
+├── examples/              # Example scripts (NEW)
+│   ├── README.md         # Examples documentation
+│   └── embedding_example.py  # Embedding service demo
 ├── docs/                   # Documentation
 └── tests/                 # Test files
     ├── test_basic.py
