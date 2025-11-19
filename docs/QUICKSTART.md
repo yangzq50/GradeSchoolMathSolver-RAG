@@ -30,15 +30,25 @@ docker --version   # Should be installed
 3. **Download Model**: 
    - Navigate to the AI Models or Models section in Docker Desktop
    - Search for and download `llama3.2:1B-Q4_0` (recommended for speed)
+   - **For RAG capabilities**: Also download `embeddinggemma:300M-Q8_0` for embedding generation
 4. **Verify**: Models should be accessible at `localhost:12434`
 
 Test the AI service:
 ```bash
+# Test chat model
 curl http://localhost:12434/engines/llama.cpp/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "ai/llama3.2:1B-Q4_0",
     "messages": [{"role": "user", "content": "test"}]
+  }'
+
+# Test embedding model (optional, for RAG)
+curl http://localhost:12434/engines/llama.cpp/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "ai/embeddinggemma:300M-Q8_0",
+    "input": "test"
   }'
 ```
 
