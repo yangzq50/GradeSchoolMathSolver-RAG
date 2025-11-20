@@ -1,4 +1,4 @@
-# Multi-stage build for GradeSchoolMathSolver-RAG
+# Multi-stage build for GradeSchoolMathSolver
 # Stage 1: Builder stage
 FROM python:3.14-slim AS builder
 
@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copy the package files
-COPY setup.py MANIFEST.in README.md ./
+COPY pyproject.toml README.md ./
 COPY gradeschoolmathsolver ./gradeschoolmathsolver
 
 # Install the package

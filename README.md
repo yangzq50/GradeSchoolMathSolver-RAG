@@ -1,14 +1,14 @@
-# GradeSchoolMathSolver-RAG
+# GradeSchoolMathSolver
 
-[![CI](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/ci.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/ci.yml)
-[![Release](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/release.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/release.yml)
-[![Docker Publish](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/docker-publish.yml)
-[![PyPI Publish](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/pypi-publish.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/pypi-publish.yml)
+[![CI](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/ci.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/ci.yml)
+[![Release](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/release.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/release.yml)
+[![Docker Publish](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/docker-publish.yml)
+[![PyPI Publish](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/pypi-publish.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/pypi-publish.yml)
 [![PyPI version](https://badge.fury.io/py/gradeschoolmathsolver.svg)](https://badge.fury.io/py/gradeschoolmathsolver)
 
 An AI-powered Grade School Math Solver with RAG (Retrieval-Augmented Generation). Automatically generates arithmetic problems, tracks correct and incorrect answers, and provides personalized practice and exams. Ideal for learning, testing, and building adaptive math tutoring agents.
 
-**📦 Docker Hub**: [yangzq50/gradeschoolmathsolver-rag](https://hub.docker.com/r/yangzq50/gradeschoolmathsolver-rag)
+**📦 Docker Hub**: [yangzq50/gradeschoolmathsolver](https://hub.docker.com/r/yangzq50/gradeschoolmathsolver)
 **📦 PyPI**: [gradeschoolmathsolver](https://pypi.org/project/gradeschoolmathsolver/)
 
 ![Homepage](https://github.com/user-attachments/assets/7e8d6f0d-c8af-4170-be71-77402945fe14)
@@ -130,10 +130,10 @@ Pull and run the latest Docker image from Docker Hub:
 
 ```bash
 # Pull the latest image
-docker pull yangzq50/gradeschoolmathsolver-rag:latest
+docker pull yangzq50/gradeschoolmathsolver:latest
 
 # Or pull a specific version
-docker pull yangzq50/gradeschoolmathsolver-rag:1.0.0
+docker pull yangzq50/gradeschoolmathsolver:1.0.0
 ```
 
 Then use with `docker-compose.yml` by modifying the web service to use the pre-built image instead of building locally.
@@ -152,8 +152,8 @@ This will install the latest stable release with all dependencies.
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yangzq50/GradeSchoolMathSolver-RAG.git
-   cd GradeSchoolMathSolver-RAG
+   git clone https://github.com/yangzq50/GradeSchoolMathSolver.git
+   cd GradeSchoolMathSolver
    ```
 
 2. **Install the package**
@@ -617,9 +617,8 @@ User/Agent Request → Exam Service → QA Generation Service → Questions
 ### Project Structure
 
 ```
-GradeSchoolMathSolver-RAG/
-├── pyproject.toml               # Package configuration (replaces setup.py)
-├── MANIFEST.in                  # Package manifest
+GradeSchoolMathSolver/
+├── pyproject.toml               # Package configuration
 ├── requirements.txt             # Python dependencies
 ├── docker-compose.yml           # Docker setup
 ├── Dockerfile                   # Multi-stage web app container
@@ -672,7 +671,7 @@ The project is now a proper Python package. If you encounter import errors:
 
 1. **Make sure the package is installed**
    ```bash
-   cd GradeSchoolMathSolver-RAG
+   cd GradeSchoolMathSolver
    pip install -e .
    ```
 
@@ -790,7 +789,7 @@ This will automatically:
 ### Docker Hub Images
 
 Pre-built Docker images are available at:
-- **Repository**: [yangzq50/gradeschoolmathsolver-rag](https://hub.docker.com/r/yangzq50/gradeschoolmathsolver-rag)
+- **Repository**: [yangzq50/gradeschoolmathsolver](https://hub.docker.com/r/yangzq50/gradeschoolmathsolver)
 - **Tags**: Each release creates multiple tags for flexibility
   - `1.0.0` - Specific version (recommended for production)
   - `1.0` - Latest patch version

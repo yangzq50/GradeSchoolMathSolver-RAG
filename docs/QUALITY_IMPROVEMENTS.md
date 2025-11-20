@@ -1,7 +1,7 @@
 # Code Quality Improvement Summary
 
 ## Overview
-This document summarizes the comprehensive code quality and documentation improvements made to the GradeSchoolMathSolver-RAG repository in response to issue: "Request: Improve Overall Code Quality and Documentation".
+This document summarizes the comprehensive code quality and documentation improvements made to the GradeSchoolMathSolver repository in response to issue: "Request: Improve Overall Code Quality and Documentation".
 
 ## Metrics
 

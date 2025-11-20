@@ -1,6 +1,6 @@
 """
 Web UI Service
-Flask-based web interface for the GradeSchoolMathSolver-RAG system
+Flask-based web interface for the GradeSchoolMathSolver system
 """
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS

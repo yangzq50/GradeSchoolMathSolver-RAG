@@ -1,5 +1,5 @@
 """
-Configuration settings for the GradeSchoolMathSolver-RAG system
+Configuration settings for the GradeSchoolMathSolver system
 
 This module manages all application configuration settings loaded from environment
 variables with sensible defaults. It provides centralized configuration for:
