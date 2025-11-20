@@ -1,5 +1,5 @@
 """
-Data models for the GradeSchoolMathSolver-RAG system
+Data models for the GradeSchoolMathSolver system
 
 This module defines all Pydantic models used throughout the application for:
 - Question generation and representation

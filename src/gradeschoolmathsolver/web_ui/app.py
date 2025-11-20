@@ -1,6 +1,6 @@
 """
 Web UI Service
-Flask-based web interface for the GradeSchoolMathSolver-RAG system
+Flask-based web interface for the GradeSchoolMathSolver system
 """
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
@@ -200,7 +200,7 @@ def api_submit_human_exam():
             return jsonify({'error': 'Questions and answers count mismatch'}), 400
 
         # Reconstruct Question objects from the data
-        from models import Question
+        from gradeschoolmathsolver.models import Question
         questions = [Question(**q) for q in questions_data]
 
         # Create exam request

@@ -1,14 +1,14 @@
-# GradeSchoolMathSolver-RAG
+# GradeSchoolMathSolver
 
-[![CI](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/ci.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/ci.yml)
-[![Release](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/release.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/release.yml)
-[![Docker Publish](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/docker-publish.yml)
-[![PyPI Publish](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/pypi-publish.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver-RAG/actions/workflows/pypi-publish.yml)
+[![CI](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/ci.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/ci.yml)
+[![Release](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/release.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/release.yml)
+[![Docker Publish](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/docker-publish.yml)
+[![PyPI Publish](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/pypi-publish.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/pypi-publish.yml)
 [![PyPI version](https://badge.fury.io/py/gradeschoolmathsolver.svg)](https://badge.fury.io/py/gradeschoolmathsolver)
 
 An AI-powered Grade School Math Solver with RAG (Retrieval-Augmented Generation). Automatically generates arithmetic problems, tracks correct and incorrect answers, and provides personalized practice and exams. Ideal for learning, testing, and building adaptive math tutoring agents.
 
-**📦 Docker Hub**: [yangzq50/gradeschoolmathsolver-rag](https://hub.docker.com/r/yangzq50/gradeschoolmathsolver-rag)
+**📦 Docker Hub**: [yangzq50/gradeschoolmathsolver](https://hub.docker.com/r/yangzq50/gradeschoolmathsolver)
 **📦 PyPI**: [gradeschoolmathsolver](https://pypi.org/project/gradeschoolmathsolver/)
 
 ![Homepage](https://github.com/user-attachments/assets/7e8d6f0d-c8af-4170-be71-77402945fe14)
@@ -130,10 +130,10 @@ Pull and run the latest Docker image from Docker Hub:
 
 ```bash
 # Pull the latest image
-docker pull yangzq50/gradeschoolmathsolver-rag:latest
+docker pull yangzq50/gradeschoolmathsolver:latest
 
 # Or pull a specific version
-docker pull yangzq50/gradeschoolmathsolver-rag:1.0.0
+docker pull yangzq50/gradeschoolmathsolver:1.0.0
 ```
 
 Then use with `docker-compose.yml` by modifying the web service to use the pre-built image instead of building locally.
@@ -152,8 +152,8 @@ This will install the latest stable release with all dependencies.
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yangzq50/GradeSchoolMathSolver-RAG.git
-   cd GradeSchoolMathSolver-RAG
+   git clone https://github.com/yangzq50/GradeSchoolMathSolver.git
+   cd GradeSchoolMathSolver
    ```
 
 2. **Install the package**
@@ -472,46 +472,43 @@ Test individual services:
 
 ```bash
 # Test QA Generation
-python services/qa_generation/service.py
+python -m gradeschoolmathsolver.services.qa_generation.service
 
 # Test Classification
-python services/classification/service.py
+python -m gradeschoolmathsolver.services.classification.service
 
 # Test Account Service
-python services/account/service.py
+python -m gradeschoolmathsolver.services.account.service
 
 # Test Quiz History
-python services/quiz_history/service.py
+python -m gradeschoolmathsolver.services.quiz_history.service
 
 # Test Agent
-python services/agent/service.py
+python -m gradeschoolmathsolver.services.agent.service
 
 # Test Agent Management
-python services/agent_management/service.py
+python -m gradeschoolmathsolver.services.agent_management.service
 
 # Test Exam Service
-python services/exam/service.py
+python -m gradeschoolmathsolver.services.exam.service
 
 # Test Immersive Exam Service
-python services/immersive_exam/service.py
+python -m gradeschoolmathsolver.services.immersive_exam.service
 
-# Test Teacher Service (NEW)
-python services/teacher/service.py
+# Test Teacher Service
+python -m gradeschoolmathsolver.services.teacher.service
 
-# Test Mistake Review Service (NEW)
-python services/mistake_review/service.py
+# Test Mistake Review Service
+python -m gradeschoolmathsolver.services.mistake_review.service
 
-# Run all basic tests
-python tests/test_basic.py
+# Run all tests with pytest
+pytest tests/ -v
 
-# Run teacher service tests (NEW)
-python tests/test_teacher_service.py
-
-# Run immersive exam tests (NEW)
-python tests/test_immersive_exam.py
-
-# Run mistake review tests (NEW)
-python tests/test_mistake_review.py
+# Run specific test files
+pytest tests/test_basic.py -v
+pytest tests/test_teacher_service.py -v
+pytest tests/test_immersive_exam.py -v
+pytest tests/test_mistake_review.py -v
 ```
 
 ## 🔧 Configuration
@@ -617,52 +614,50 @@ User/Agent Request → Exam Service → QA Generation Service → Questions
 ### Project Structure
 
 ```
-GradeSchoolMathSolver-RAG/
-├── pyproject.toml               # Package configuration (replaces setup.py)
-├── MANIFEST.in                  # Package manifest
+GradeSchoolMathSolver/
+├── pyproject.toml               # Package configuration
 ├── requirements.txt             # Python dependencies
 ├── docker-compose.yml           # Docker setup
 ├── Dockerfile                   # Multi-stage web app container
 ├── .env.example                 # Environment template
-├── config.py                    # Backward compatibility stub (deprecated)
-├── models.py                    # Backward compatibility stub (deprecated)
-├── gradeschoolmathsolver/       # Main package
-│   ├── __init__.py             # Package initialization
-│   ├── config.py               # Configuration settings
-│   ├── models.py               # Data models (including mistake review)
-│   ├── services/               # Core services
-│   │   ├── qa_generation/     # Question generation
-│   │   ├── classification/    # Question classification
-│   │   ├── account/          # User management
-│   │   ├── database/         # Database backends
-│   │   ├── quiz_history/     # RAG history storage
-│   │   ├── exam/            # Exam management
-│   │   ├── immersive_exam/  # Immersive exam management
-│   │   ├── teacher/         # Teacher feedback service
-│   │   ├── mistake_review/  # Mistake review service (NEW)
-│   │   ├── agent/           # RAG bot logic
-│   │   └── agent_management/ # Agent configuration
-│   └── web_ui/              # Flask web interface
-│       ├── app.py          # Web application
-│       └── templates/      # HTML templates
-│           ├── immersive_exam_create.html
-│           ├── immersive_exam_live.html
-│           ├── immersive_exam_results.html
-│           └── mistake_review.html      # (NEW)
+├── src/                         # Source code
+│   └── gradeschoolmathsolver/  # Main package
+│       ├── __init__.py         # Package initialization
+│       ├── config.py           # Configuration settings
+│       ├── models.py           # Data models (including mistake review)
+│       ├── services/           # Core services
+│       │   ├── qa_generation/     # Question generation
+│       │   ├── classification/    # Question classification
+│       │   ├── account/          # User management
+│       │   ├── database/         # Database backends
+│       │   ├── quiz_history/     # RAG history storage
+│       │   ├── exam/            # Exam management
+│       │   ├── immersive_exam/  # Immersive exam management
+│       │   ├── teacher/         # Teacher feedback service
+│       │   ├── mistake_review/  # Mistake review service
+│       │   ├── agent/           # RAG bot logic
+│       │   └── agent_management/ # Agent configuration
+│       └── web_ui/              # Flask web interface
+│           ├── app.py          # Web application
+│           └── templates/      # HTML templates
+│               ├── immersive_exam_create.html
+│               ├── immersive_exam_live.html
+│               ├── immersive_exam_results.html
+│               └── mistake_review.html
 ├── docs/                   # Documentation
 └── tests/                 # Test files
     ├── test_basic.py
     ├── test_teacher_service.py
     ├── test_immersive_exam.py
-    └── test_mistake_review.py          # (NEW)
+    └── test_mistake_review.py
 ```
 
 ### Adding New Features
 
-1. **New Question Type**: Modify `gradeschoolmathsolver/services/qa_generation/service.py`
-2. **New Category**: Add to `gradeschoolmathsolver/config.py` QUESTION_CATEGORIES
-3. **New Agent Strategy**: Extend `gradeschoolmathsolver/services/agent/service.py`
-4. **New UI Page**: Add template to `gradeschoolmathsolver/web_ui/templates/`
+1. **New Question Type**: Modify `src/gradeschoolmathsolver/services/qa_generation/service.py`
+2. **New Category**: Add to `src/gradeschoolmathsolver/config.py` QUESTION_CATEGORIES
+3. **New Agent Strategy**: Extend `src/gradeschoolmathsolver/services/agent/service.py`
+4. **New UI Page**: Add template to `src/gradeschoolmathsolver/web_ui/templates/`
 
 ## 🐛 Troubleshooting
 
@@ -672,7 +667,7 @@ The project is now a proper Python package. If you encounter import errors:
 
 1. **Make sure the package is installed**
    ```bash
-   cd GradeSchoolMathSolver-RAG
+   cd GradeSchoolMathSolver
    pip install -e .
    ```
 
@@ -790,7 +785,7 @@ This will automatically:
 ### Docker Hub Images
 
 Pre-built Docker images are available at:
-- **Repository**: [yangzq50/gradeschoolmathsolver-rag](https://hub.docker.com/r/yangzq50/gradeschoolmathsolver-rag)
+- **Repository**: [yangzq50/gradeschoolmathsolver](https://hub.docker.com/r/yangzq50/gradeschoolmathsolver)
 - **Tags**: Each release creates multiple tags for flexibility
   - `1.0.0` - Specific version (recommended for production)
   - `1.0` - Latest patch version

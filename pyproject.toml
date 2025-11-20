@@ -8,9 +8,9 @@ version = "1.0.0"
 description = "An AI-powered Grade School Math Solver with RAG"
 readme = "README.md"
 authors = [
-    {name = "yangzq50"}
+    {name = "Zhiqiang Yang"}
 ]
-license = {text = "MIT"}
+license = { file = "LICENSE" }
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -51,12 +51,12 @@ dev = [
 gradeschoolmathsolver = "gradeschoolmathsolver.web_ui.app:main"
 
 [project.urls]
-Homepage = "https://github.com/yangzq50/GradeSchoolMathSolver-RAG"
-Repository = "https://github.com/yangzq50/GradeSchoolMathSolver-RAG"
-"Bug Tracker" = "https://github.com/yangzq50/GradeSchoolMathSolver-RAG/issues"
+Homepage = "https://github.com/yangzq50/GradeSchoolMathSolver"
+Repository = "https://github.com/yangzq50/GradeSchoolMathSolver"
+"Bug Tracker" = "https://github.com/yangzq50/GradeSchoolMathSolver/issues"
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]
 include = ["gradeschoolmathsolver*"]
 exclude = ["tests*"]
 

@@ -1,5 +1,5 @@
 """
-GradeSchoolMathSolver-RAG Package
+GradeSchoolMathSolver Package
 
 An AI-powered Grade School Math Solver with RAG (Retrieval-Augmented Generation).
 Automatically generates arithmetic problems, tracks correct and incorrect answers,

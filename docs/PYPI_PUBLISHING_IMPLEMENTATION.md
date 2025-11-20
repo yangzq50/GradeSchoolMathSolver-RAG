@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document summarizes the implementation of automated PyPI publishing for the GradeSchoolMathSolver-RAG project.
+This document summarizes the implementation of automated PyPI publishing for the GradeSchoolMathSolver project.
 
 ## Changes Made
 
@@ -26,11 +26,18 @@ Updated `pyproject.toml`:
 - Removed deprecated setuptools_scm dependency
 - Maintained all existing metadata, dependencies, and configuration
 
-### 3. File Removals
+### 3. File Removals and Refactoring
 
 Removed deprecated files:
 - `setup.py` - No longer needed with pyproject.toml
 - `setup.cfg` - No longer needed with pyproject.toml
+- `MANIFEST.in` - Replaced by `[tool.setuptools.package-data]` in pyproject.toml
+
+Refactored to modern src/ layout:
+- Moved all package code from `gradeschoolmathsolver/` to `src/gradeschoolmathsolver/`
+- Updated `pyproject.toml` to specify `where = ["src"]` for package discovery
+- Updated CI workflows to reference `src/gradeschoolmathsolver/`
+- Updated Dockerfile to build from src/ structure
 
 ### 4. Documentation
 

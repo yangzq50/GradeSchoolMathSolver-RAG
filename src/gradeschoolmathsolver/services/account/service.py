@@ -210,7 +210,7 @@ class AccountService:
 
             # Refresh index if requested (useful for testing)
             if refresh and doc_id:
-                from services.database.elasticsearch_backend import ElasticsearchDatabaseService
+                from gradeschoolmathsolver.services.database.elasticsearch_backend import ElasticsearchDatabaseService
                 if isinstance(self.db, ElasticsearchDatabaseService):
                     self.db.refresh_index(self.answers_index)
 

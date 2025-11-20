@@ -2,7 +2,7 @@
 
 ## Overview
 
-GradeSchoolMathSolver-RAG is a modular AI-powered math learning system with 9 core components working together to provide personalized math education.
+GradeSchoolMathSolver is a modular AI-powered math learning system with 9 core components working together to provide personalized math education.
 
 ## Component Diagram
 

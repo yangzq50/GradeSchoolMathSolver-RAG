@@ -1,4 +1,4 @@
-# Contributing to GradeSchoolMathSolver-RAG
+# Contributing to GradeSchoolMathSolver
 
 Thank you for your interest in contributing! This document provides guidelines and best practices for contributing to this project.
 
