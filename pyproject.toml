@@ -8,9 +8,9 @@ version = "1.0.0"
 description = "An AI-powered Grade School Math Solver with RAG"
 readme = "README.md"
 authors = [
-    {name = "yangzq50"}
+    {name = "Zhiqiang Yang"}
 ]
-license = {text = "MIT"}
+license = { file = "LICENSE" }
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
