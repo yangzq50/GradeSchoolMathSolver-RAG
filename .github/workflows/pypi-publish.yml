@@ -1,0 +1,102 @@
+name: PyPI Publish
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Matches semantic version tags like v1.0.0, v2.1.3, etc.
+
+permissions:
+  contents: read  # Required to checkout code
+
+jobs:
+  verify-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      on_default_branch: ${{ steps.verify_branch.outputs.on_default_branch }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history to verify branch
+    
+    - name: Verify tag is on default branch
+      id: verify_branch
+      run: |
+        # Check if the current tag is reachable from the default branch
+        DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+        if git branch -r --contains ${{ github.ref }} | grep -q "origin/${DEFAULT_BRANCH}"; then
+          echo "Tag is on the default branch (${DEFAULT_BRANCH})"
+          echo "on_default_branch=true" >> $GITHUB_OUTPUT
+        else
+          echo "Tag is NOT on the default branch (${DEFAULT_BRANCH}). Skipping PyPI publish."
+          echo "on_default_branch=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Extract version from tag
+      id: version
+      run: |
+        # Extract version without 'v' prefix (e.g., v1.0.0 -> 1.0.0)
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Publishing version: $VERSION"
+
+  build-package:
+    needs: verify-tag
+    if: needs.verify-tag.outputs.on_default_branch == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Update version in pyproject.toml
+      run: |
+        VERSION=${{ needs.verify-tag.outputs.version }}
+        sed -i "s/^version = .*/version = \"$VERSION\"/" pyproject.toml
+        echo "Updated pyproject.toml version to: $VERSION"
+        grep "^version" pyproject.toml
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build
+    
+    - name: Build package
+      run: python -m build
+    
+    - name: List distributions
+      run: ls -lh dist/
+    
+    - name: Upload distributions
+      uses: actions/upload-artifact@v4
+      with:
+        name: distributions
+        path: dist/
+        if-no-files-found: error
+
+  publish-to-pypi:
+    needs: [verify-tag, build-package]
+    if: needs.verify-tag.outputs.on_default_branch == 'true'
+    runs-on: ubuntu-latest
+    environment: prod  # Run in prod environment
+    
+    steps:
+    - name: Download distributions
+      uses: actions/download-artifact@v4
+      with:
+        name: distributions
+        path: dist/
+    
+    - name: List distributions
+      run: ls -lh dist/
+    
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.PYPI_TOKEN }}

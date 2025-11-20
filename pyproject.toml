@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=69.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -55,8 +55,10 @@ Homepage = "https://github.com/yangzq50/GradeSchoolMathSolver-RAG"
 Repository = "https://github.com/yangzq50/GradeSchoolMathSolver-RAG"
 "Bug Tracker" = "https://github.com/yangzq50/GradeSchoolMathSolver-RAG/issues"
 
-[tool.setuptools]
-packages = ["gradeschoolmathsolver"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["gradeschoolmathsolver*"]
+exclude = ["tests*"]
 
 [tool.setuptools.package-data]
 gradeschoolmathsolver = ["web_ui/templates/*.html", "web_ui/templates/**/*.html"]
