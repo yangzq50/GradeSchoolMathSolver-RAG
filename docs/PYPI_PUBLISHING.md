@@ -148,18 +148,27 @@ To publish a new version to PyPI:
 
 When you push a tag matching `v*.*.*`, the workflow:
 
-1. Checks out the code
-2. Verifies the tag is on the default branch
-3. Sets up Python 3.11
-4. Installs build tools (build, twine)
-5. Updates the version in `pyproject.toml` to match the tag
-6. Builds the package (creates `.tar.gz` and `.whl` files)
-7. Checks the package with twine
-8. Publishes to PyPI using the `PYPI_TOKEN` secret
+1. **Verification Job**:
+   - Checks out the code
+   - Verifies the tag is on the default branch
+   - Extracts the version from the tag
+
+2. **Build Package Job**:
+   - Updates the version in `pyproject.toml` to match the tag
+   - Uses `python -m build` to build both:
+     - Source distribution (`.tar.gz`)
+     - Universal wheel (`.whl`) - works on all platforms and Python versions (3.11+)
+   - Uploads distribution artifacts
+
+3. **Publish Job**:
+   - Downloads all build artifacts
+   - Publishes to PyPI using `pypa/gh-action-pypi-publish` with the `PYPI_TOKEN` secret
+
+**Note**: This package is pure Python with no compiled extensions, so a single universal wheel works across all platforms and Python versions. This simplifies the build process and reduces build time significantly.
 
 ### Workflow Environment
 
-The workflow runs in the "prod" environment, which means:
+The publish job runs in the "prod" environment, which means:
 - It requires the "prod" environment to be configured
 - Any protection rules apply (e.g., required approvals)
 - Environment-specific secrets are available
@@ -172,28 +181,31 @@ Test the build process before pushing a tag:
 
 ```bash
 # Install build tools
-pip install build twine
+pip install build
 
 # Clean previous builds
 rm -rf dist/ build/ *.egg-info
 
-# Build the package
+# Build the package (source distribution and universal wheel)
 python -m build
 
 # Check the output
 ls -lh dist/
 ```
 
-You should see two files:
+You should see:
 - `gradeschoolmathsolver-X.Y.Z.tar.gz` (source distribution)
-- `gradeschoolmathsolver-X.Y.Z-py3-none-any.whl` (wheel distribution)
+- `gradeschoolmathsolver-X.Y.Z-py3-none-any.whl` (universal wheel for pure Python packages)
 
 ### Validating the Package
 
 Check the package for issues:
 
 ```bash
-# Check with twine
+# Install check tools
+pip install twine
+
+# Check distributions
 twine check dist/*
 
 # List package contents
@@ -331,10 +343,15 @@ If the build fails:
 2. Check `pyproject.toml` syntax
 3. Ensure all required files are present
 4. Verify package structure is correct
+5. Check the GitHub Actions logs for specific error messages
 
-### Twine Check Warnings
+### pypa/gh-action-pypi-publish Issues
 
-The workflow includes `twine check` which may report warnings about Metadata-Version 2.4. These warnings can often be ignored as the package will still upload successfully. The workflow is configured to continue even if `twine check` reports issues.
+If publishing fails:
+1. Verify the `PYPI_TOKEN` secret is correctly set
+2. Ensure artifacts were uploaded successfully in previous jobs
+3. Check that the "prod" environment is configured
+4. Review the publish job logs for specific errors
 
 ## Best Practices
 
@@ -353,5 +370,5 @@ The workflow includes `twine check` which may report warnings about Metadata-Ver
 - [PEP 517 - Build System](https://peps.python.org/pep-0517/)
 - [PEP 518 - pyproject.toml](https://peps.python.org/pep-0518/)
 - [setuptools Documentation](https://setuptools.pypa.io/)
-- [Twine Documentation](https://twine.readthedocs.io/)
+- [pypa/gh-action-pypi-publish](https://github.com/pypa/gh-action-pypi-publish)
 - [PyPI Help](https://pypi.org/help/)

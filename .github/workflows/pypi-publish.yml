@@ -9,10 +9,11 @@ permissions:
   contents: read  # Required to checkout code
 
 jobs:
-  pypi-build-and-publish:
+  verify-tag:
     runs-on: ubuntu-latest
-    environment: prod  # Run in prod environment
-    
+    outputs:
+      on_default_branch: ${{ steps.verify_branch.outputs.on_default_branch }}
+      version: ${{ steps.version.outputs.version }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -32,55 +33,70 @@ jobs:
           echo "on_default_branch=false" >> $GITHUB_OUTPUT
         fi
     
-    - name: Set up Python
-      if: steps.verify_branch.outputs.on_default_branch == 'true'
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-        cache: 'pip'
-    
-    - name: Install build dependencies
-      if: steps.verify_branch.outputs.on_default_branch == 'true'
-      run: |
-        python -m pip install --upgrade pip
-        pip install build twine
-    
     - name: Extract version from tag
-      if: steps.verify_branch.outputs.on_default_branch == 'true'
       id: version
       run: |
         # Extract version without 'v' prefix (e.g., v1.0.0 -> 1.0.0)
         VERSION=${GITHUB_REF#refs/tags/v}
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "Publishing version: $VERSION"
+
+  build-package:
+    needs: verify-tag
+    if: needs.verify-tag.outputs.on_default_branch == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
     
     - name: Update version in pyproject.toml
-      if: steps.verify_branch.outputs.on_default_branch == 'true'
       run: |
-        # Update version in pyproject.toml to match tag
-        VERSION=${{ steps.version.outputs.version }}
+        VERSION=${{ needs.verify-tag.outputs.version }}
         sed -i "s/^version = .*/version = \"$VERSION\"/" pyproject.toml
         echo "Updated pyproject.toml version to: $VERSION"
         grep "^version" pyproject.toml
     
-    - name: Build package
-      if: steps.verify_branch.outputs.on_default_branch == 'true'
+    - name: Install build dependencies
       run: |
-        python -m build
-        echo "Built packages:"
-        ls -lh dist/
+        python -m pip install --upgrade pip
+        pip install build
     
-    - name: Check package with twine
-      if: steps.verify_branch.outputs.on_default_branch == 'true'
-      run: |
-        # Note: twine check may report issues with Metadata-Version 2.4
-        # but the package is valid and will upload successfully
-        twine check dist/* || echo "Warning: twine check reported issues but package may still be valid"
+    - name: Build package
+      run: python -m build
+    
+    - name: List distributions
+      run: ls -lh dist/
+    
+    - name: Upload distributions
+      uses: actions/upload-artifact@v4
+      with:
+        name: distributions
+        path: dist/
+        if-no-files-found: error
+
+  publish-to-pypi:
+    needs: [verify-tag, build-package]
+    if: needs.verify-tag.outputs.on_default_branch == 'true'
+    runs-on: ubuntu-latest
+    environment: prod  # Run in prod environment
+    
+    steps:
+    - name: Download distributions
+      uses: actions/download-artifact@v4
+      with:
+        name: distributions
+        path: dist/
+    
+    - name: List distributions
+      run: ls -lh dist/
     
     - name: Publish to PyPI
-      if: steps.verify_branch.outputs.on_default_branch == 'true'
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-      run: |
-        twine upload dist/*
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.PYPI_TOKEN }}

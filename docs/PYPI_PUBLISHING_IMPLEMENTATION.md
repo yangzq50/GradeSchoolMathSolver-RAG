@@ -13,9 +13,10 @@ Created `.github/workflows/pypi-publish.yml` that:
 - Runs in the "prod" environment for security
 - Verifies tag is on the default branch
 - Automatically updates version in pyproject.toml to match the tag
-- Builds the package using `python -m build`
-- Validates the package with `twine check`
-- Publishes to PyPI using the `PYPI_TOKEN` secret
+- Builds the package using `python -m build` (pure Python - no compiled extensions)
+- Publishes to PyPI using `pypa/gh-action-pypi-publish` with the `PYPI_TOKEN` secret
+
+**Build Strategy**: Since this is a pure Python package with no C extensions, the workflow builds a single universal wheel that works across all platforms and Python versions (3.11+), significantly simplifying the build process.
 
 ### 2. Package Configuration
 
@@ -69,11 +70,9 @@ Updated **README.md**:
 
 5. Workflow builds the package:
    - Source distribution (.tar.gz)
-   - Wheel distribution (.whl)
+   - Universal wheel (.whl) - works on all platforms and Python 3.11+
 
-6. Workflow validates the package with twine
-
-7. Workflow publishes to PyPI using the PYPI_TOKEN secret
+6. Workflow publishes to PyPI using `pypa/gh-action-pypi-publish` and the PYPI_TOKEN secret
 
 ### Package Installation
 
