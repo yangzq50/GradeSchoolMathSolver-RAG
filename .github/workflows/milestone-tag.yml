@@ -78,17 +78,30 @@ jobs:
             ref: 'heads/' + context.payload.repository.default_branch
           });
           const sha = ref.object.sha;
-          console.log(`Creating tag ${tagName} at commit ${sha}`);
+          console.log(`Creating annotated tag ${tagName} at commit ${sha}`);
           
-          // Create the tag
+          // Create an annotated tag object with a message
+          const tagMessage = `Release ${tagName}\n\nAutomatic tag created for milestone: ${milestoneTitle}`;
+          const { data: tagObject } = await github.rest.git.createTag({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            tag: tagName,
+            message: tagMessage,
+            object: sha,
+            type: 'commit'
+          });
+          
+          console.log(`Created tag object: ${tagObject.sha}`);
+          
+          // Create the reference to the annotated tag
           await github.rest.git.createRef({
             owner: context.repo.owner,
             repo: context.repo.repo,
             ref: `refs/tags/${tagName}`,
-            sha: sha
+            sha: tagObject.sha
           });
           
-          console.log(`Successfully created tag ${tagName}`);
+          console.log(`Successfully created annotated tag ${tagName}`);
           core.setOutput('tag_created', tagName);
     
     - name: Tag creation summary
