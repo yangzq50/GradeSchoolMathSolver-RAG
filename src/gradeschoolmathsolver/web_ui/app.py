@@ -200,7 +200,7 @@ def api_submit_human_exam():
             return jsonify({'error': 'Questions and answers count mismatch'}), 400
 
         # Reconstruct Question objects from the data
-        from models import Question
+        from gradeschoolmathsolver.models import Question
         questions = [Question(**q) for q in questions_data]
 
         # Create exam request
