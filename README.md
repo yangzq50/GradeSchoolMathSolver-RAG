@@ -472,46 +472,43 @@ Test individual services:
 
 ```bash
 # Test QA Generation
-python services/qa_generation/service.py
+python -m gradeschoolmathsolver.services.qa_generation.service
 
 # Test Classification
-python services/classification/service.py
+python -m gradeschoolmathsolver.services.classification.service
 
 # Test Account Service
-python services/account/service.py
+python -m gradeschoolmathsolver.services.account.service
 
 # Test Quiz History
-python services/quiz_history/service.py
+python -m gradeschoolmathsolver.services.quiz_history.service
 
 # Test Agent
-python services/agent/service.py
+python -m gradeschoolmathsolver.services.agent.service
 
 # Test Agent Management
-python services/agent_management/service.py
+python -m gradeschoolmathsolver.services.agent_management.service
 
 # Test Exam Service
-python services/exam/service.py
+python -m gradeschoolmathsolver.services.exam.service
 
 # Test Immersive Exam Service
-python services/immersive_exam/service.py
+python -m gradeschoolmathsolver.services.immersive_exam.service
 
-# Test Teacher Service (NEW)
-python services/teacher/service.py
+# Test Teacher Service
+python -m gradeschoolmathsolver.services.teacher.service
 
-# Test Mistake Review Service (NEW)
-python services/mistake_review/service.py
+# Test Mistake Review Service
+python -m gradeschoolmathsolver.services.mistake_review.service
 
-# Run all basic tests
-python tests/test_basic.py
+# Run all tests with pytest
+pytest tests/ -v
 
-# Run teacher service tests (NEW)
-python tests/test_teacher_service.py
-
-# Run immersive exam tests (NEW)
-python tests/test_immersive_exam.py
-
-# Run mistake review tests (NEW)
-python tests/test_mistake_review.py
+# Run specific test files
+pytest tests/test_basic.py -v
+pytest tests/test_teacher_service.py -v
+pytest tests/test_immersive_exam.py -v
+pytest tests/test_mistake_review.py -v
 ```
 
 ## 🔧 Configuration

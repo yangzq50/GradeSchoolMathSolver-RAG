@@ -1,6 +1,6 @@
 # PyPI Publishing Guide
 
-This document explains how to configure and use the automated PyPI publishing workflow for the GradeSchoolMathSolver-RAG project.
+This document explains how to configure and use the automated PyPI publishing workflow for the GradeSchoolMathSolver project.
 
 ## Overview
 
@@ -44,12 +44,20 @@ dependencies = [
 #### Package Discovery
 ```toml
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]
 include = ["gradeschoolmathsolver*"]
 exclude = ["tests*"]
 ```
 
-This tells setuptools to automatically find all packages under `gradeschoolmathsolver/`.
+This tells setuptools to automatically find all packages under `src/gradeschoolmathsolver/`.
+
+#### Package Data
+```toml
+[tool.setuptools.package-data]
+gradeschoolmathsolver = ["web_ui/templates/*.html", "web_ui/templates/**/*.html"]
+```
+
+This ensures HTML templates are included in the package distribution.
 
 #### Console Scripts
 ```toml
@@ -59,18 +67,11 @@ gradeschoolmathsolver = "gradeschoolmathsolver.web_ui.app:main"
 
 This creates the `gradeschoolmathsolver` command-line tool.
 
-### MANIFEST.in
+### Legacy Files Removed
 
-The `MANIFEST.in` file specifies additional files to include in the distribution:
+The project previously used `MANIFEST.in` for specifying package data. This has been replaced by the `[tool.setuptools.package-data]` section in `pyproject.toml`, which provides better integration with modern Python packaging standards.
 
-```
-include README.md
-include LICENSE
-include requirements.txt
-include .env.example
-recursive-include gradeschoolmathsolver/web_ui/templates *.html
-recursive-include docs *.md
-```
+All non-Python files (HTML templates, etc.) are now configured directly in `pyproject.toml`.
 
 ## Setting Up PyPI Publishing
 
