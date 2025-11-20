@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read  # Required to checkout code
+  id-token: write  # Required for OIDC authentication to PyPI
 
 jobs:
   verify-tag:
@@ -85,6 +86,8 @@ jobs:
     if: needs.verify-tag.outputs.on_default_branch == 'true'
     runs-on: ubuntu-latest
     environment: prod  # Run in prod environment
+    permissions:
+      id-token: write  # Required for OIDC authentication
     
     steps:
     - name: Download distributions
@@ -98,5 +101,3 @@ jobs:
     
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.PYPI_TOKEN }}

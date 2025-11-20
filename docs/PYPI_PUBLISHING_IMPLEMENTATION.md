@@ -14,9 +14,12 @@ Created `.github/workflows/pypi-publish.yml` that:
 - Verifies tag is on the default branch
 - Automatically updates version in pyproject.toml to match the tag
 - Builds the package using `python -m build` (pure Python - no compiled extensions)
-- Publishes to PyPI using `pypa/gh-action-pypi-publish` with the `PYPI_TOKEN` secret
+- Publishes to PyPI using `pypa/gh-action-pypi-publish` with **OIDC Trusted Publishing**
+- Uses `id-token: write` permission for secure, token-less authentication
 
 **Build Strategy**: Since this is a pure Python package with no C extensions, the workflow builds a single universal wheel that works across all platforms and Python versions (3.11+), significantly simplifying the build process.
+
+**Security Enhancement**: The workflow uses OpenID Connect (OIDC) for authentication, eliminating the need for long-lived API tokens. GitHub automatically generates short-lived tokens during workflow execution.
 
 ### 2. Package Configuration
 
@@ -79,7 +82,7 @@ Updated **README.md**:
    - Source distribution (.tar.gz)
    - Universal wheel (.whl) - works on all platforms and Python 3.11+
 
-6. Workflow publishes to PyPI using `pypa/gh-action-pypi-publish` and the PYPI_TOKEN secret
+6. Workflow publishes to PyPI using `pypa/gh-action-pypi-publish` with **OIDC authentication**
 
 ### Package Installation
 
@@ -92,18 +95,17 @@ pip install gradeschoolmathsolver
 
 ### For Repository Maintainer
 
-1. **Create PyPI API Token**:
+1. **Configure PyPI Trusted Publisher**:
    - Log in to PyPI
-   - Generate an API token with project scope
-   - Keep the token secure
+   - Navigate to project → Settings → Publishing (or Account Settings → Publishing for new projects)
+   - Add GitHub Actions as a Trusted Publisher
+   - Specify: Owner (yangzq50), Repository (GradeSchoolMathSolver), Workflow (pypi-publish.yml), Environment (prod)
 
-2. **Add GitHub Secret**:
-   - Add `PYPI_TOKEN` secret to repository
-   - Value should be the PyPI API token
-
-3. **Configure Environment**:
+2. **Configure GitHub Environment**:
    - Create "prod" environment in GitHub
    - Optionally add protection rules
+
+**Note**: No API tokens or GitHub Secrets are required with OIDC Trusted Publishing. This provides enhanced security through short-lived, automatically generated tokens.
 
 ## Testing Performed
 
@@ -119,14 +121,16 @@ pip install gradeschoolmathsolver
 - **Python**: 3.11, 3.12, 3.13, 3.14
 - **Package Format**: Modern pyproject.toml (PEP 517/518)
 - **Build Backend**: setuptools
-- **Publishing**: twine with PyPI API token
+- **Publishing**: OIDC Trusted Publishing (OpenID Connect)
 
 ## Security Considerations
 
-1. **PYPI_TOKEN** is stored as a GitHub secret
-2. Workflow runs in "prod" environment for additional protection
-3. Only tags on the default branch are published
-4. CodeQL security scanning passed
+1. **OIDC Authentication** eliminates the need for long-lived API tokens
+2. Workflow uses `id-token: write` permission for secure authentication
+3. Workflow runs in "prod" environment for additional protection
+4. Only tags on the default branch are published
+5. CodeQL security scanning passed
+6. Short-lived tokens are automatically generated during workflow execution
 
 ## Known Issues
 

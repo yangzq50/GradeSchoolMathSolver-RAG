@@ -81,31 +81,25 @@ All non-Python files (HTML templates, etc.) are now configured directly in `pypr
 2. Access to the GitHub repository settings
 3. Permission to configure the "prod" environment in GitHub
 
-### Step 1: Generate PyPI API Token
+### Step 1: Configure PyPI Trusted Publishing (OIDC)
+
+PyPI now supports **Trusted Publishing** using OpenID Connect (OIDC), which eliminates the need for API tokens and provides enhanced security through short-lived tokens.
 
 1. Log in to [PyPI](https://pypi.org/)
-2. Go to Account Settings → API tokens
-3. Click "Add API token"
-4. Configure the token:
-   - **Token name**: "GradeSchoolMathSolver GitHub Actions" (or similar)
-   - **Scope**: 
-     - For first release: "Entire account" (project doesn't exist yet)
-     - After first release: Scope to "Project: gradeschoolmathsolver"
-5. Click "Create token"
-6. **IMPORTANT**: Copy the token immediately (it starts with `pypi-`)
-   - You won't be able to see it again!
+2. Go to your **project page** (or Account Settings → Publishing for new projects)
+3. Navigate to the **"Publishing"** section
+4. Click **"Add a new publisher"**
+5. Select **"GitHub Actions"** as the publisher type
+6. Configure the publisher:
+   - **Owner**: `yangzq50`
+   - **Repository name**: `GradeSchoolMathSolver`
+   - **Workflow name**: `pypi-publish.yml`
+   - **Environment name**: `prod`
+7. Click **"Add"**
 
-### Step 2: Add Token to GitHub Secrets
+**For first-time publishing**: If the project doesn't exist on PyPI yet, you can configure "Pending Publishers" under Account Settings → Publishing before the first release.
 
-1. Go to your GitHub repository
-2. Navigate to Settings → Secrets and variables → Actions
-3. Click "New repository secret"
-4. Configure the secret:
-   - **Name**: `PYPI_TOKEN`
-   - **Value**: Paste the PyPI token you copied
-5. Click "Add secret"
-
-### Step 3: Configure Production Environment
+### Step 2: Configure Production Environment
 
 The workflow uses the "prod" environment for additional security:
 
@@ -115,6 +109,8 @@ The workflow uses the "prod" environment for additional security:
    - **Required reviewers**: Add team members who must approve releases
    - **Wait timer**: Add a delay before deployment
    - **Deployment branches**: Limit to specific branches (e.g., main)
+
+**Note**: No API tokens or secrets are needed with OIDC! GitHub automatically generates short-lived tokens during workflow execution.
 
 ## Publishing a Release
 
@@ -163,7 +159,8 @@ When you push a tag matching `v*.*.*`, the workflow:
 
 3. **Publish Job**:
    - Downloads all build artifacts
-   - Publishes to PyPI using `pypa/gh-action-pypi-publish` with the `PYPI_TOKEN` secret
+   - Publishes to PyPI using `pypa/gh-action-pypi-publish` with **OIDC authentication**
+   - No API tokens needed - GitHub automatically provides short-lived tokens
 
 **Note**: This package is pure Python with no compiled extensions, so a single universal wheel works across all platforms and Python versions. This simplifies the build process and reduces build time significantly.
 
@@ -172,7 +169,7 @@ When you push a tag matching `v*.*.*`, the workflow:
 The publish job runs in the "prod" environment, which means:
 - It requires the "prod" environment to be configured
 - Any protection rules apply (e.g., required approvals)
-- Environment-specific secrets are available
+- OIDC authentication is used (no API tokens needed)
 
 ## Local Testing
 
@@ -308,15 +305,15 @@ gsm-cli = "gradeschoolmathsolver.cli:main"  # New command
 After publishing, it may take a few minutes for the package to appear on PyPI:
 - Check the workflow logs for errors
 - Visit https://pypi.org/project/gradeschoolmathsolver/
-- Verify the `PYPI_TOKEN` secret is correct
+- Verify the Trusted Publisher is configured correctly on PyPI
 
 ### Permission Denied
 
 If the workflow fails with a permission error:
-1. Check the `PYPI_TOKEN` secret is set correctly
-2. Verify the token has the correct scope
-3. For first release, use "Entire account" scope
-4. After first release, scope token to the specific project
+1. Verify the Trusted Publisher is configured on PyPI with the correct repository details
+2. Ensure the "prod" environment is configured in GitHub
+3. Check that `id-token: write` permission is set in the workflow
+4. For first release, configure "Pending Publishers" on PyPI before pushing the tag
 
 ### Version Conflict
 
@@ -349,21 +346,22 @@ If the build fails:
 ### pypa/gh-action-pypi-publish Issues
 
 If publishing fails:
-1. Verify the `PYPI_TOKEN` secret is correctly set
+1. Verify Trusted Publisher is configured correctly on PyPI
 2. Ensure artifacts were uploaded successfully in previous jobs
 3. Check that the "prod" environment is configured
-4. Review the publish job logs for specific errors
+4. Verify `id-token: write` permission is granted
+5. Review the publish job logs for specific errors
 
 ## Best Practices
 
 1. **Always test locally** before pushing tags
 2. **Use semantic versioning**: MAJOR.MINOR.PATCH
 3. **Document changes** in release notes
-4. **Scope PyPI tokens** to specific projects after first release
+4. **Use OIDC Trusted Publishing** for enhanced security (no API tokens!)
 5. **Keep pyproject.toml updated** with accurate metadata
 6. **Test in TestPyPI first** for major changes
-7. **Never commit** PyPI tokens to the repository
-8. **Use environment protection** rules for production releases
+7. **Use environment protection** rules for production releases
+8. **Configure protection rules** on the "prod" environment for additional security
 
 ## References
 
@@ -372,4 +370,5 @@ If publishing fails:
 - [PEP 518 - pyproject.toml](https://peps.python.org/pep-0518/)
 - [setuptools Documentation](https://setuptools.pypa.io/)
 - [pypa/gh-action-pypi-publish](https://github.com/pypa/gh-action-pypi-publish)
+- [PyPI Trusted Publishers](https://docs.pypi.org/trusted-publishers/)
 - [PyPI Help](https://pypi.org/help/)

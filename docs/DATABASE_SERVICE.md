@@ -386,7 +386,7 @@ def get_database_service() -> DatabaseService:
         return ElasticsearchDatabaseService()
 ```
 
-4. **Add Dependencies**: Update `requirements.txt` with required packages
+4. **Add Dependencies**: Update `pyproject.toml` with required packages
 
 5. **Update Configuration**: Add configuration in `config.py` and `.env.example`
 

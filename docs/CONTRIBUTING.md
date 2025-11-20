@@ -44,7 +44,7 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 3. **Install dependencies**
    ```bash
-   pip install -r requirements.txt
+   pip install -e .
    ```
 
 4. **Set up environment variables**

@@ -159,7 +159,7 @@ Beyond the core requirements, the following have been provided:
 
 ### Deployment ✅
 1. **start.sh** - Automated setup script
-2. **requirements.txt** - Python dependencies
+2. **pyproject.toml** - Package configuration and dependencies
 3. **.gitignore** - Proper git configuration
 
 ---
@@ -363,7 +363,7 @@ docker-compose up web
 ### Updates
 ```bash
 git pull
-pip install -r requirements.txt --upgrade
+pip install -e . --upgrade
 docker-compose pull
 docker-compose restart
 ```

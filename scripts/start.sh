@@ -81,7 +81,7 @@ fi
 
 echo "📦 Installing Python dependencies..."
 source venv/bin/activate
-pip install -q -r requirements.txt
+pip install -q -e .
 
 # Create default agents
 echo "🤖 Initializing default RAG agents..."

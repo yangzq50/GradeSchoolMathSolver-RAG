@@ -93,7 +93,7 @@
   │
   ├── config.py                   # Configuration Management
   ├── models.py                   # Data Models
-  ├── requirements.txt            # Python Dependencies
+  ├── pyproject.toml              # Package Configuration & Dependencies
   ├── docker-compose.yml          # Docker Setup
   ├── Dockerfile                  # Web App Container
   ├── start.sh                    # Automated Setup

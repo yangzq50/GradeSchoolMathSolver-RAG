@@ -10,21 +10,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy only dependency files first for better caching
-COPY requirements.txt .
-
-# Create virtual environment and install dependencies
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements.txt
-
 # Copy the package files
 COPY pyproject.toml README.md ./
 COPY src/gradeschoolmathsolver ./src/gradeschoolmathsolver
 
-# Install the package
-RUN pip install --no-cache-dir .
+# Create virtual environment and install the package with all dependencies
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir .
 
 # Stage 2: Runtime stage
 FROM python:3.14-slim

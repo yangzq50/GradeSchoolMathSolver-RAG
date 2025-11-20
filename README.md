@@ -615,8 +615,7 @@ User/Agent Request → Exam Service → QA Generation Service → Questions
 
 ```
 GradeSchoolMathSolver/
-├── pyproject.toml               # Package configuration
-├── requirements.txt             # Python dependencies
+├── pyproject.toml               # Package configuration and dependencies
 ├── docker-compose.yml           # Docker setup
 ├── Dockerfile                   # Multi-stage web app container
 ├── .env.example                 # Environment template
@@ -814,27 +813,24 @@ To update dependencies or metadata, edit `pyproject.toml` directly. The package 
 
 #### Setting up PyPI Publishing
 
-To enable automated PyPI publishing, you need to configure the `PYPI_TOKEN` secret:
+PyPI publishing is automated using **OpenID Connect (OIDC)** for secure, token-less authentication:
 
-1. **Generate a PyPI API token**:
-   - Log in to [PyPI](https://pypi.org/) (or [TestPyPI](https://test.pypi.org/) for testing)
-   - Go to Account Settings → API tokens
-   - Click "Add API token"
-   - Set the token name (e.g., "GradeSchoolMathSolver GitHub Actions")
-   - Set the scope to the specific project or "Entire account"
-   - Copy the generated token (starts with `pypi-`)
+1. **Configure PyPI Trusted Publishing**:
+   - Log in to [PyPI](https://pypi.org/)
+   - Go to your project → Settings → Publishing
+   - Add a new "GitHub Actions" publisher:
+     - **Owner**: yangzq50
+     - **Repository**: GradeSchoolMathSolver
+     - **Workflow name**: pypi-publish.yml
+     - **Environment name**: prod
+   - Click "Add"
 
-2. **Add the token to GitHub Secrets**:
-   - Go to your GitHub repository → Settings → Secrets and variables → Actions
-   - Click "New repository secret"
-   - Name: `PYPI_TOKEN`
-   - Value: Paste the PyPI token
-   - Click "Add secret"
-
-3. **Configure the "prod" environment**:
+2. **Configure the "prod" environment in GitHub**:
    - Go to Settings → Environments
    - Create or configure the "prod" environment
    - Optionally add protection rules (e.g., required reviewers)
+
+**Note**: OIDC authentication eliminates the need for PyPI API tokens in GitHub Secrets, providing enhanced security through short-lived tokens automatically generated during workflow execution.
 
 #### Building and Testing Locally
 

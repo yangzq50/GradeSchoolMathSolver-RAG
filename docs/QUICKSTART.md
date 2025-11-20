@@ -76,7 +76,7 @@ Wait 30 seconds for Elasticsearch to start.
 
 ### Step 5: Install Python Dependencies (if using Option B)
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ### Step 6: Start Web Application (if using Option B)
@@ -129,7 +129,7 @@ docker-compose up -d
 
 # Option 2: Start only Elasticsearch, then run web app locally
 docker-compose up -d elasticsearch
-pip install -r requirements.txt
+pip install -e .
 python -m web_ui.app
 ```
 
@@ -144,7 +144,7 @@ Set up Docker Desktop AI or Ollama as described above.
 
 ### Step 2: Install Python Dependencies
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ### Step 3: Configure for No-Docker Mode
@@ -299,7 +299,7 @@ To update to the latest version:
 
 ```bash
 git pull
-pip install -r requirements.txt --upgrade
+pip install -e . --upgrade
 docker-compose pull
 docker-compose up -d
 ```
