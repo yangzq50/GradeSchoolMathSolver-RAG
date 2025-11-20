@@ -2,7 +2,7 @@
 
 ## Overview
 
-The GradeSchoolMathSolver-RAG system uses an AI model (LLaMA 3.2 or similar) via an **OpenAI-compatible API** for:
+The GradeSchoolMathSolver system uses an AI model (LLaMA 3.2 or similar) via an **OpenAI-compatible API** for:
 - Generating natural language questions from equations
 - Classifying math questions into categories
 - Solving math problems with reasoning (Agent service)

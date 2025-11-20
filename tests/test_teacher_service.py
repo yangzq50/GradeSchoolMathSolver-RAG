@@ -2,7 +2,7 @@
 Test suite for Teacher Service
 """
 import sys
-sys.path.insert(0, '/home/runner/work/GradeSchoolMathSolver-RAG/GradeSchoolMathSolver-RAG')
+sys.path.insert(0, '/home/runner/work/GradeSchoolMathSolver/GradeSchoolMathSolver')
 
 from gradeschoolmathsolver.services.teacher import TeacherService  # noqa: E402
 from gradeschoolmathsolver.config import Config  # noqa: E402

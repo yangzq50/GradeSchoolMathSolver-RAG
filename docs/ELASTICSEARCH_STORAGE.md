@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the Elasticsearch storage implementation for the GradeSchoolMathSolver-RAG system. Elasticsearch 9.2.1 is available as an **optional backend** for advanced full-text search and RAG (Retrieval-Augmented Generation) features.
+This document describes the Elasticsearch storage implementation for the GradeSchoolMathSolver system. Elasticsearch 9.2.1 is available as an **optional backend** for advanced full-text search and RAG (Retrieval-Augmented Generation) features.
 
 **Note**: MariaDB is the default database backend. Elasticsearch is recommended when you need advanced full-text search and semantic similarity features for RAG functionality.
 

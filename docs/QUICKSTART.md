@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get GradeSchoolMathSolver-RAG up and running in 5 minutes!
+Get GradeSchoolMathSolver up and running in 5 minutes!
 
 ## Prerequisites Check
 
@@ -44,8 +44,8 @@ curl http://localhost:12434/engines/llama.cpp/v1/chat/completions \
 
 ### Step 2: Clone and Setup
 ```bash
-git clone https://github.com/yangzq50/GradeSchoolMathSolver-RAG.git
-cd GradeSchoolMathSolver-RAG
+git clone https://github.com/yangzq50/GradeSchoolMathSolver.git
+cd GradeSchoolMathSolver
 ```
 
 ### Step 3: Configure Environment

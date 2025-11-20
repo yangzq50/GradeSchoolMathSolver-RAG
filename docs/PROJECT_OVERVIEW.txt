@@ -1,5 +1,5 @@
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                    GradeSchoolMathSolver-RAG System                          ║
+║                    GradeSchoolMathSolver System                               ║
 ║                           Project Overview                                    ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
@@ -65,7 +65,7 @@
 📁 PROJECT STRUCTURE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  GradeSchoolMathSolver-RAG/
+  GradeSchoolMathSolver/
   │
   ├── services/                    # Core Services (9 services)
   │   ├── qa_generation/          # Service 1: Question Generation
@@ -184,7 +184,7 @@
 
   Quick Start:
     $ git clone <repository>
-    $ cd GradeSchoolMathSolver-RAG
+    $ cd GradeSchoolMathSolver
     $ ./start.sh
     $ python web_ui/app.py
     $ open http://localhost:5000

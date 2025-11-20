@@ -1,5 +1,5 @@
 """
-Basic tests for the GradeSchoolMathSolver-RAG system
+Basic tests for the GradeSchoolMathSolver system
 """
 import sys
 import os
@@ -148,7 +148,7 @@ def test_config():
 
 def run_all_tests():
     """Run all tests"""
-    print("\n🧪 Running GradeSchoolMathSolver-RAG Tests")
+    print("\n🧪 Running GradeSchoolMathSolver Tests")
     print("=" * 50)
 
     tests = [

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Database Service provides a unified abstraction layer for all database operations in the GradeSchoolMathSolver-RAG project. This architecture allows the application to easily switch between different database backends (MariaDB or Elasticsearch) without modifying business logic.
+The Database Service provides a unified abstraction layer for all database operations in the GradeSchoolMathSolver project. This architecture allows the application to easily switch between different database backends (MariaDB or Elasticsearch) without modifying business logic.
 
 **Default Backend**: MariaDB 11.8 LTS is the default database backend, providing reliable relational storage with JSON support.
 

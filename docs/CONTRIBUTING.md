@@ -32,8 +32,8 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 1. **Fork and clone the repository**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/GradeSchoolMathSolver-RAG.git
-   cd GradeSchoolMathSolver-RAG
+   git clone https://github.com/YOUR_USERNAME/GradeSchoolMathSolver.git
+   cd GradeSchoolMathSolver
    ```
 
 2. **Create a virtual environment**
@@ -334,4 +334,4 @@ Include:
 - Check existing issues and discussions
 - Review the documentation in the `docs/` directory
 
-Thank you for contributing to GradeSchoolMathSolver-RAG! 🎉
+Thank you for contributing to GradeSchoolMathSolver! 🎉

@@ -2,7 +2,7 @@
 
 ## Overview
 
-MariaDB 11.8 LTS is the **default database backend** for the GradeSchoolMathSolver-RAG system. This document explains how MariaDB is integrated, configured, and used throughout the application.
+MariaDB 11.8 LTS is the **default database backend** for the GradeSchoolMathSolver system. This document explains how MariaDB is integrated, configured, and used throughout the application.
 
 ## Why MariaDB?
 

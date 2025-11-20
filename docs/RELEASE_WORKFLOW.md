@@ -1,6 +1,6 @@
 # GitHub Releases and Docker Hub Publishing
 
-This document describes the automated release and Docker publishing workflows for the GradeSchoolMathSolver-RAG project.
+This document describes the automated release and Docker publishing workflows for the GradeSchoolMathSolver project.
 
 ## Overview
 

@@ -1,8 +1,8 @@
 #!/bin/bash
-# Startup script for GradeSchoolMathSolver-RAG
+# Startup script for GradeSchoolMathSolver
 # This script helps set up the development environment
 
-echo "🚀 Starting GradeSchoolMathSolver-RAG System"
+echo "🚀 Starting GradeSchoolMathSolver System"
 echo "=========================================="
 
 # Check if .env exists
