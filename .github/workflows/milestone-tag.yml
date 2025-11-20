@@ -25,12 +25,12 @@ jobs:
           console.log(`Processing milestone: ${milestoneTitle}`);
           
           // Pattern matching for version extraction
-          // Pattern 1: vx.x.x - **** (e.g., "v1.2.3 - Feature Release")
-          const pattern1 = /^v(\d+)\.(\d+)\.(\d+)\s*-\s*.+$/;
-          // Pattern 2: vx.x - **** (e.g., "v1.2 - Minor Release")
-          const pattern2 = /^v(\d+)\.(\d+)\s*-\s*.+$/;
-          // Pattern 3: vx - **** (e.g., "v1 - Major Release")
-          const pattern3 = /^v(\d+)\s*-\s*.+$/;
+          // Pattern 1: vx.x.x (e.g., "v1.2.3 - Feature Release")
+          const pattern1 = /^v(\d+)\.(\d+)\.(\d+).*$/;
+          // Pattern 2: vx.x (e.g., "v1.2 - Minor Release")
+          const pattern2 = /^v(\d+)\.(\d+).*$/;
+          // Pattern 3: vx (e.g., "v1 - Major Release")
+          const pattern3 = /^v(\d+).*$/;
           
           let tagName = null;
           
