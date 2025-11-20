@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read  # Required to checkout code
-  id-token: write  # Required for OIDC authentication to PyPI
 
 jobs:
   verify-tag:
@@ -87,7 +86,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: prod  # Run in prod environment
     permissions:
-      id-token: write  # Required for OIDC authentication
+      id-token: write  # Required for OIDC authentication to PyPI
     
     steps:
     - name: Download distributions
