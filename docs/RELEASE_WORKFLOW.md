@@ -51,8 +51,9 @@ Once the tag is created, it automatically triggers the Release and Docker Publis
 - Links to the Docker image on Docker Hub
 
 **Trigger**: 
-- Pushing semantic version tags (e.g., `v1.0.0`, `v2.1.3`)
+- Pushing semantic version tags (e.g., `v1.0.0`, `v2.1.3`) **on the default branch (main)**
 - Automatically triggered by the Milestone Tag Workflow
+- Tags not on the default branch will be skipped
 
 **Example release notes include**:
 - Auto-generated "What's Changed" section with PRs and commits
@@ -74,8 +75,10 @@ Once the tag is created, it automatically triggers the Release and Docker Publis
 - Uses GitHub Actions cache for faster builds
 
 **Trigger**: 
-- Pushing semantic version tags (e.g., `v1.0.0`, `v2.1.3`)
+- Pushing semantic version tags (e.g., `v1.0.0`, `v2.1.3`) **on the default branch (main)**
 - Automatically triggered by the Milestone Tag Workflow
+- Tags not on the default branch will be skipped
+- **Runs in the `prod` environment** (may require approval if environment protection rules are configured)
 
 **Docker image metadata**:
 - OCI-compliant labels for better discoverability
@@ -188,17 +191,22 @@ git push origin v1.0.0
 
 When you close a milestone with a matching pattern or push a tag matching `v*.*.*`:
 
+> **Important**: Both the Release and Docker Publish workflows will only execute if the tag is on the default branch (main). Tags created on other branches will be ignored.
+
 1. **Milestone Tag Workflow** triggers (if using milestone):
    - Parses milestone title
-   - Creates appropriate git tag
+   - Creates appropriate git tag **on the main branch**
    - Takes ~10 seconds
 
 2. **Release Workflow** triggers:
+   - Verifies the tag is on the default branch (main)
    - Creates/updates GitHub release
    - Adds release notes and installation instructions
    - Takes ~30 seconds
 
 3. **Docker Publish Workflow** triggers:
+   - Verifies the tag is on the default branch (main)
+   - Runs in the `prod` environment
    - Builds Docker images for multiple platforms
    - Pushes to Docker Hub with multiple tags
    - Updates Docker Hub description
@@ -303,10 +311,12 @@ body: |
 
 ### Release Not Created
 
-**Solution**: Check tag format
+**Solution**: Check tag format and branch
 - Must start with `v` (e.g., `v1.0.0`, not `1.0.0`)
 - Must follow semantic versioning (three numbers)
+- **Must be on the default branch (main)** - tags on other branches will be skipped
 - Use `git tag -l` to verify tag exists
+- Use `git branch -r --contains <tag>` to verify the tag is on main
 
 ### Multi-platform Build Fails
 
