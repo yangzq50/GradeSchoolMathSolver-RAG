@@ -30,6 +30,10 @@ class Config:
         AI_MODEL_NAME: Name/identifier of the AI model to use
         LLM_ENGINE: LLM engine type (e.g., 'llama.cpp')
 
+    Embedding Service:
+        EMBEDDING_MODEL_URL: URL of the embedding service endpoint
+        EMBEDDING_MODEL_NAME: Name/identifier of the embedding model to use
+
     Database Settings:
         DATABASE_BACKEND: Database backend to use ('elasticsearch' or 'mariadb')
         ELASTICSEARCH_HOST: Elasticsearch server hostname
@@ -60,6 +64,10 @@ class Config:
     AI_MODEL_URL = os.getenv('AI_MODEL_URL', 'http://localhost:12434')
     AI_MODEL_NAME = os.getenv('AI_MODEL_NAME', 'ai/llama3.2:1B-Q4_0')
     LLM_ENGINE = os.getenv('LLM_ENGINE', 'llama.cpp')
+
+    # Embedding Service Configuration
+    EMBEDDING_MODEL_URL = os.getenv('EMBEDDING_MODEL_URL', 'http://localhost:12434')
+    EMBEDDING_MODEL_NAME = os.getenv('EMBEDDING_MODEL_NAME', 'ai/embeddinggemma:300M-Q8_0')
 
     # Database Backend Selection
     DATABASE_BACKEND = os.getenv('DATABASE_BACKEND', 'mariadb')  # 'elasticsearch' or 'mariadb'
