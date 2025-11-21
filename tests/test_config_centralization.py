@@ -25,8 +25,15 @@ def test_config_default_values():
     assert config.DATABASE_BACKEND == 'mariadb'
     
     # Database retry defaults
-    assert config.DB_MAX_RETRIES == 12
-    assert config.DB_RETRY_DELAY == 5.0
+    # Check if running in CI environment (which sets DB_MAX_RETRIES=2)
+    if os.getenv('DB_MAX_RETRIES'):
+        # CI environment - use CI values
+        assert config.DB_MAX_RETRIES == int(os.getenv('DB_MAX_RETRIES', '2'))
+        assert config.DB_RETRY_DELAY == float(os.getenv('DB_RETRY_DELAY', '0.5'))
+    else:
+        # Normal environment - use production defaults
+        assert config.DB_MAX_RETRIES == 12
+        assert config.DB_RETRY_DELAY == 5.0
     
     # MariaDB defaults
     assert config.MARIADB_HOST == 'localhost'
@@ -106,8 +113,19 @@ def test_teacher_service_enabled_default_true():
 
 def test_mariadb_backend_uses_config():
     """Test that MariaDB backend uses Config for retry parameters"""
-    from gradeschoolmathsolver.services.database.mariadb_backend import MariaDBDatabaseService
+    import importlib
     from mysql.connector import Error as MySQLError
+    
+    # Reload config module to pick up current environment variables
+    import gradeschoolmathsolver.config as config_module
+    importlib.reload(config_module)
+    from gradeschoolmathsolver.config import Config
+    from gradeschoolmathsolver.services.database.mariadb_backend import MariaDBDatabaseService
+    
+    # Get expected values from Config (respects environment)
+    config = Config()
+    expected_retries = config.DB_MAX_RETRIES
+    expected_delay = config.DB_RETRY_DELAY
     
     with patch('gradeschoolmathsolver.services.database.mariadb_backend.mysql.connector.connect') as mock_connect:
         mock_connect.side_effect = MySQLError("Connection refused")
@@ -116,17 +134,28 @@ def test_mariadb_backend_uses_config():
             # Create service without explicit retry params (should use Config)
             service = MariaDBDatabaseService()
             
-            # Should use default config values (12 retries)
-            assert service.max_retries == 12
-            assert service.retry_delay == 5.0
+            # Should use config values (respects CI environment if set)
+            assert service.max_retries == expected_retries
+            assert service.retry_delay == expected_delay
             
             print("✅ MariaDB backend correctly uses Config defaults")
 
 
 def test_elasticsearch_backend_uses_config():
     """Test that Elasticsearch backend uses Config for retry parameters"""
-    from gradeschoolmathsolver.services.database.elasticsearch_backend import ElasticsearchDatabaseService
+    import importlib
     from elasticsearch import ConnectionError as ESConnectionError
+    
+    # Reload config module to pick up current environment variables
+    import gradeschoolmathsolver.config as config_module
+    importlib.reload(config_module)
+    from gradeschoolmathsolver.config import Config
+    from gradeschoolmathsolver.services.database.elasticsearch_backend import ElasticsearchDatabaseService
+    
+    # Get expected values from Config (respects environment)
+    config = Config()
+    expected_retries = config.DB_MAX_RETRIES
+    expected_delay = config.DB_RETRY_DELAY
     
     with patch('gradeschoolmathsolver.services.database.elasticsearch_backend.Elasticsearch') as mock_es_class:
         mock_es = mock_es_class.return_value
@@ -136,9 +165,9 @@ def test_elasticsearch_backend_uses_config():
             # Create service without explicit retry params (should use Config)
             service = ElasticsearchDatabaseService()
             
-            # Should use default config values (12 retries)
-            assert service.max_retries == 12
-            assert service.retry_delay == 5.0
+            # Should use config values (respects CI environment if set)
+            assert service.max_retries == expected_retries
+            assert service.retry_delay == expected_delay
             
             print("✅ Elasticsearch backend correctly uses Config defaults")
 
