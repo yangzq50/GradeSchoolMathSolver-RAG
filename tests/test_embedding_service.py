@@ -4,7 +4,7 @@ Unit tests for the Embedding Service
 Tests embedding generation functionality with mocked API responses.
 """
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from gradeschoolmathsolver.services.embedding import EmbeddingService
 
 
@@ -136,11 +136,11 @@ class TestEmbeddingService:
         # Setup mock to fail first, then succeed
         mock_response_fail = Mock()
         mock_response_fail.status_code = 500
-        
+
         mock_response_success = Mock()
         mock_response_success.status_code = 200
         mock_response_success.json.return_value = mock_embedding_response
-        
+
         mock_post.side_effect = [mock_response_fail, mock_response_success]
 
         # Test
@@ -193,7 +193,7 @@ class TestEmbeddingService:
     @patch('gradeschoolmathsolver.services.embedding.service.requests.post')
     def test_generate_embeddings_batch_failure(self, mock_post, embedding_service):
         """Test batch embedding generation with API failure
-        
+
         Note: On failure, the batch method returns a list of None values
         to maintain index correspondence with the input list.
         """
@@ -229,8 +229,8 @@ class TestEmbeddingService:
         assert embeddings == []
 
     @patch('gradeschoolmathsolver.services.embedding.service.requests.post')
-    def test_generate_embeddings_batch_with_empty_strings(self, mock_post, embedding_service,
-                                                         mock_batch_embedding_response):
+    def test_generate_embeddings_batch_with_empty_strings(
+            self, mock_post, embedding_service, mock_batch_embedding_response):
         """Test batch embedding with empty strings - should preserve None at empty positions"""
         # Setup mock - only returns embeddings for valid texts
         mock_response = Mock()
