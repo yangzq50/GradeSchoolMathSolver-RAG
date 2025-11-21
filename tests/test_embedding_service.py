@@ -192,7 +192,11 @@ class TestEmbeddingService:
 
     @patch('gradeschoolmathsolver.services.embedding.service.requests.post')
     def test_generate_embeddings_batch_failure(self, mock_post, embedding_service):
-        """Test batch embedding generation with API failure"""
+        """Test batch embedding generation with API failure
+        
+        Note: On failure, the batch method returns a list of None values
+        to maintain index correspondence with the input list.
+        """
         # Setup mock to fail
         mock_response = Mock()
         mock_response.status_code = 500
@@ -205,6 +209,7 @@ class TestEmbeddingService:
         # Assertions
         assert embeddings is not None
         assert len(embeddings) == 3
+        # All embeddings should be None due to API failure
         assert all(e is None for e in embeddings)
         assert mock_post.call_count == 3
 
@@ -226,12 +231,12 @@ class TestEmbeddingService:
     @patch('gradeschoolmathsolver.services.embedding.service.requests.post')
     def test_generate_embeddings_batch_with_empty_strings(self, mock_post, embedding_service,
                                                          mock_batch_embedding_response):
-        """Test batch embedding with some empty strings (should be filtered out)"""
-        # Setup mock
+        """Test batch embedding with empty strings - should preserve None at empty positions"""
+        # Setup mock - only returns embeddings for valid texts
         mock_response = Mock()
         mock_response.status_code = 200
-        # Adjust response to have only 2 embeddings (empty string filtered out)
-        filtered_response = {
+        # API returns embeddings only for the 2 valid texts
+        valid_response = {
             "object": "list",
             "data": [
                 {"object": "embedding", "embedding": [0.1, 0.2, 0.3, 0.4, 0.5], "index": 0},
@@ -240,16 +245,24 @@ class TestEmbeddingService:
             "model": "ai/embeddinggemma:300M-Q8_0",
             "usage": {"prompt_tokens": 10, "total_tokens": 10}
         }
-        mock_response.json.return_value = filtered_response
+        mock_response.json.return_value = valid_response
         mock_post.return_value = mock_response
 
         # Test with empty string in the middle
         texts = ["Valid text 1", "", "Valid text 2"]
         embeddings = embedding_service.generate_embeddings_batch(texts)
 
-        # Assertions - empty strings are filtered, so we get 2 embeddings
+        # Assertions - output length should match input length
         assert embeddings is not None
-        assert len(embeddings) == 2
+        assert len(embeddings) == 3  # Same length as input
+        # First position should have embedding
+        assert embeddings[0] is not None
+        assert len(embeddings[0]) == 5
+        # Second position (empty string) should be None
+        assert embeddings[1] is None
+        # Third position should have embedding
+        assert embeddings[2] is not None
+        assert len(embeddings[2]) == 5
 
     @patch('gradeschoolmathsolver.services.embedding.service.requests.post')
     def test_is_available_true(self, mock_post, embedding_service, mock_embedding_response):

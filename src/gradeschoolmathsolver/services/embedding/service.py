@@ -3,9 +3,13 @@ Embedding Service
 Generates vector embeddings using the EmbeddingGemma model via Docker Model Runner
 """
 from typing import List, Optional, Union
+import logging
 import requests
 from requests.exceptions import RequestException, Timeout
 from gradeschoolmathsolver.config import Config
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 class EmbeddingService:
@@ -42,6 +46,9 @@ class EmbeddingService:
     def _call_embedding_api(self, text: Union[str, List[str]]) -> Optional[List[List[float]]]:
         """
         Make API call to generate embeddings
+        
+        Note: This uses LLM_ENGINE from config for endpoint construction. 
+        Docker Model Runner uses the same engine path for both LLM and embedding models.
         
         Args:
             text: Single text string or list of text strings
@@ -80,10 +87,10 @@ class EmbeddingService:
             return None
             
         except (Timeout, RequestException) as e:
-            print(f"Embedding API call failed: {e}")
+            logger.warning(f"Embedding API call failed: {e}")
             return None
         except Exception as e:
-            print(f"Unexpected error in embedding API call: {e}")
+            logger.error(f"Unexpected error in embedding API call: {e}")
             return None
     
     def generate_embedding(self, text: str) -> Optional[List[float]]:
@@ -106,7 +113,7 @@ class EmbeddingService:
             768
         """
         if not text or not isinstance(text, str):
-            print("Invalid input: text must be a non-empty string")
+            logger.warning("Invalid input: text must be a non-empty string")
             return None
         
         # Try with retries
@@ -117,9 +124,9 @@ class EmbeddingService:
                 return embeddings[0]
             
             if attempt < self.max_retries - 1:
-                print(f"Embedding generation attempt {attempt + 1}/{self.max_retries} failed, retrying...")
+                logger.info(f"Embedding generation attempt {attempt + 1}/{self.max_retries} failed, retrying...")
         
-        print(f"Failed to generate embedding after {self.max_retries} attempts")
+        logger.warning(f"Failed to generate embedding after {self.max_retries} attempts")
         return None
     
     def generate_embeddings_batch(self, texts: List[str]) -> List[Optional[List[float]]]:
@@ -129,43 +136,65 @@ class EmbeddingService:
         This is more efficient than calling generate_embedding() multiple times
         as it batches the requests to the embedding model.
         
+        Note: Empty or invalid strings are preserved in the output as None values
+        to maintain index correspondence with the input list.
+        
         Args:
             texts: List of text strings to embed
             
         Returns:
             List of embedding vectors (each is a list of floats).
-            Returns None for any text that failed to embed.
+            Returns None for any text that is empty, invalid, or failed to embed.
+            The output list length matches the input list length.
             
         Example:
             >>> service = EmbeddingService()
-            >>> texts = ["What is 5 + 3?", "Calculate 10 - 4"]
+            >>> texts = ["What is 5 + 3?", "", "Calculate 10 - 4"]
             >>> embeddings = service.generate_embeddings_batch(texts)
-            >>> print(len(embeddings))
-            2
+            >>> print(len(embeddings))  # 3 - same as input
+            3
+            >>> print(embeddings[1] is None)  # Empty string -> None
+            True
         """
         if not texts or not isinstance(texts, list):
-            print("Invalid input: texts must be a non-empty list")
+            logger.warning("Invalid input: texts must be a non-empty list")
             return []
         
-        # Filter out empty strings
-        valid_texts = [t for t in texts if t and isinstance(t, str)]
+        # Create index mapping and filter valid texts
+        valid_indices = []
+        valid_texts = []
+        for i, text in enumerate(texts):
+            if text and isinstance(text, str):
+                valid_indices.append(i)
+                valid_texts.append(text)
+        
         if not valid_texts:
-            print("No valid texts to embed")
-            return []
+            logger.warning("No valid texts to embed")
+            # Return list of None matching input length
+            return [None] * len(texts)
         
         # Try with retries
+        embeddings_result = None
         for attempt in range(self.max_retries):
-            embeddings = self._call_embedding_api(valid_texts)
+            embeddings_result = self._call_embedding_api(valid_texts)
             
-            if embeddings:
-                return embeddings
+            if embeddings_result:
+                break
             
             if attempt < self.max_retries - 1:
-                print(f"Batch embedding generation attempt {attempt + 1}/{self.max_retries} failed, retrying...")
+                logger.info(f"Batch embedding generation attempt {attempt + 1}/{self.max_retries} failed, retrying...")
         
-        print(f"Failed to generate batch embeddings after {self.max_retries} attempts")
-        # Return list of None values matching input length
-        return [None] * len(valid_texts)
+        # Create output list matching input size, with None for invalid/empty texts
+        output = [None] * len(texts)
+        
+        if embeddings_result:
+            # Map valid embeddings back to their original positions
+            for valid_idx, embedding in zip(valid_indices, embeddings_result):
+                output[valid_idx] = embedding
+        else:
+            logger.warning(f"Failed to generate batch embeddings after {self.max_retries} attempts")
+        
+        return output
     
     def is_available(self) -> bool:
         """
