@@ -177,8 +177,14 @@ def test_no_direct_os_getenv_outside_config():
     import os
     from pathlib import Path
     
-    # Get the source directory
-    src_dir = Path(__file__).parent.parent / 'src' / 'gradeschoolmathsolver'
+    # Get the source directory (relative to test file location)
+    test_dir = Path(__file__).parent
+    project_root = test_dir.parent
+    src_dir = project_root / 'src' / 'gradeschoolmathsolver'
+    
+    # Ensure the source directory exists
+    if not src_dir.exists():
+        raise FileNotFoundError(f"Source directory not found: {src_dir}")
     
     # Track violations
     violations = []
