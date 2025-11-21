@@ -40,6 +40,8 @@ class Config:
         MARIADB_USER: MariaDB username
         MARIADB_PASSWORD: MariaDB password
         MARIADB_DATABASE: MariaDB database name
+        DB_MAX_RETRIES: Maximum number of database connection retry attempts
+        DB_RETRY_DELAY: Initial delay between connection retries in seconds
 
     Web UI Settings:
         FLASK_HOST: Flask server bind address
@@ -73,6 +75,10 @@ class Config:
     MARIADB_USER = os.getenv('MARIADB_USER', 'root')
     MARIADB_PASSWORD = os.getenv('MARIADB_PASSWORD', '')
     MARIADB_DATABASE = os.getenv('MARIADB_DATABASE', 'math_solver')
+
+    # Database Connection Retry Configuration
+    DB_MAX_RETRIES = int(os.getenv('DB_MAX_RETRIES', '12'))
+    DB_RETRY_DELAY = float(os.getenv('DB_RETRY_DELAY', '5.0'))
 
     # Web UI Configuration
     FLASK_HOST = os.getenv('FLASK_HOST', '0.0.0.0')

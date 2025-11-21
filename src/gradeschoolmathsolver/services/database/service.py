@@ -194,8 +194,8 @@ def get_database_service() -> DatabaseService:
     """
     Get the global database service instance
 
-    Auto-initializes based on DATABASE_BACKEND environment variable.
-    Supported backends: 'elasticsearch' (default), 'mariadb'
+    Auto-initializes based on DATABASE_BACKEND configuration.
+    Supported backends: 'elasticsearch', 'mariadb' (default)
 
     Returns:
         DatabaseService: The configured database service
@@ -205,8 +205,9 @@ def get_database_service() -> DatabaseService:
     """
     global _db_service
     if _db_service is None:
-        import os
-        backend = os.getenv('DATABASE_BACKEND', 'elasticsearch').lower()
+        from gradeschoolmathsolver.config import Config
+        config = Config()
+        backend = config.DATABASE_BACKEND.lower()
 
         if backend == 'mariadb':
             from .mariadb_backend import MariaDBDatabaseService

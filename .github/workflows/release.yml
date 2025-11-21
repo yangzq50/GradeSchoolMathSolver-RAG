@@ -72,6 +72,7 @@ jobs:
           
           const customBody = `
           **Docker Image**: \`${{ github.repository_owner }}/gradeschoolmathsolver:${{ steps.version.outputs.version }}\`
+          **PyPI Package**: \`gradeschoolmathsolver==${{ steps.version.outputs.version }}\`
           
           ## Installation
           
@@ -82,7 +83,7 @@ jobs:
           
           ### Using pip
           \`\`\`bash
-          pip install git+https://github.com/${{ github.repository }}.git@${{ steps.version.outputs.tag }}
+          pip install gradeschoolmathsolver
           \`\`\`
           
           For more information, see the [README](https://github.com/${{ github.repository }}/blob/${{ steps.version.outputs.tag }}/README.md).

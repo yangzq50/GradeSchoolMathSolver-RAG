@@ -11,6 +11,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+@patch.dict(os.environ, {'DATABASE_BACKEND': 'elasticsearch'})
 @patch('gradeschoolmathsolver.services.database.elasticsearch_backend.Elasticsearch')
 @patch('gradeschoolmathsolver.services.qa_generation.service.requests.post')
 def test_full_exam_flow_with_mocked_external_services(mock_requests_post, mock_elasticsearch):  # noqa: C901
@@ -18,8 +19,17 @@ def test_full_exam_flow_with_mocked_external_services(mock_requests_post, mock_e
     End-to-end smoke test: Generate questions, take exam, process results
     with Database and AI Model service mocked
     """
+    # Reload config to pick up environment variable changes
+    import importlib
+    import gradeschoolmathsolver.config as config_module
+    importlib.reload(config_module)
+    
+    # Reset database service to pick up elasticsearch backend
+    from gradeschoolmathsolver.services.database.service import set_database_service
+    set_database_service(None)
+    
     from gradeschoolmathsolver.services.exam import ExamService
-    from models import ExamRequest
+    from gradeschoolmathsolver.models import ExamRequest
     from elasticsearch import NotFoundError
 
     # Track created users
@@ -156,14 +166,24 @@ def test_full_exam_flow_with_mocked_external_services(mock_requests_post, mock_e
     print("✅ End-to-end smoke test: Full exam flow works with mocked services")
 
 
+@patch.dict(os.environ, {'DATABASE_BACKEND': 'elasticsearch'})
 @patch('gradeschoolmathsolver.services.database.elasticsearch_backend.Elasticsearch')
 def test_exam_flow_without_ai_model(mock_elasticsearch):
     """
     Test that exam flow works even when AI model is unavailable
     (should fall back to using equation as question text)
     """
+    # Reload config to pick up environment variable changes
+    import importlib
+    import gradeschoolmathsolver.config as config_module
+    importlib.reload(config_module)
+    
+    # Reset database service to pick up elasticsearch backend
+    from gradeschoolmathsolver.services.database.service import set_database_service
+    set_database_service(None)
+    
     from gradeschoolmathsolver.services.exam import ExamService
-    from models import ExamRequest
+    from gradeschoolmathsolver.models import ExamRequest
 
     # Mock Elasticsearch
     mock_es_instance = MagicMock()
@@ -197,14 +217,24 @@ def test_exam_flow_without_ai_model(mock_elasticsearch):
     print("✅ End-to-end smoke test: Works without AI model service")
 
 
+@patch.dict(os.environ, {'DATABASE_BACKEND': 'elasticsearch'})
 @patch('gradeschoolmathsolver.services.database.elasticsearch_backend.Elasticsearch')
 def test_exam_flow_without_elasticsearch(mock_elasticsearch):
     """
     Test that exam flow works when Elasticsearch is unavailable
     (should gracefully degrade, skipping RAG features)
     """
+    # Reload config to pick up environment variable changes
+    import importlib
+    import gradeschoolmathsolver.config as config_module
+    importlib.reload(config_module)
+    
+    # Reset database service to pick up elasticsearch backend
+    from gradeschoolmathsolver.services.database.service import set_database_service
+    set_database_service(None)
+    
     from gradeschoolmathsolver.services.exam import ExamService
-    from models import ExamRequest
+    from gradeschoolmathsolver.models import ExamRequest
 
     # Mock Elasticsearch to simulate connection failure
     mock_elasticsearch.side_effect = Exception("Connection failed")
@@ -232,14 +262,24 @@ def test_exam_flow_without_elasticsearch(mock_elasticsearch):
     print("✅ End-to-end smoke test: Works without Elasticsearch")
 
 
+@patch.dict(os.environ, {'DATABASE_BACKEND': 'elasticsearch'})
 @patch('gradeschoolmathsolver.services.database.elasticsearch_backend.Elasticsearch')
 @patch('gradeschoolmathsolver.services.qa_generation.service.requests.post')
 def test_classification_integration(mock_requests_post, mock_elasticsearch):
     """
     Test that question classification works in the full flow
     """
+    # Reload config to pick up environment variable changes
+    import importlib
+    import gradeschoolmathsolver.config as config_module
+    importlib.reload(config_module)
+    
+    # Reset database service to pick up elasticsearch backend
+    from gradeschoolmathsolver.services.database.service import set_database_service
+    set_database_service(None)
+    
     from gradeschoolmathsolver.services.exam import ExamService
-    from models import ExamRequest
+    from gradeschoolmathsolver.models import ExamRequest
 
     # Setup mocks
     mock_es_instance = MagicMock()

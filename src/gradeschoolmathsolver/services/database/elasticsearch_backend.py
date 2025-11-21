@@ -4,7 +4,6 @@ Elasticsearch Database Backend
 Implementation of DatabaseService interface using Elasticsearch.
 """
 from typing import List, Optional, Dict, Any
-import os
 import time
 from elasticsearch import Elasticsearch, ConnectionError as ESConnectionError, NotFoundError, ConflictError
 from gradeschoolmathsolver.config import Config
@@ -24,17 +23,17 @@ class ElasticsearchDatabaseService(DatabaseService):
         Initialize Elasticsearch database service with retry logic
 
         Args:
-            max_retries: Maximum number of connection attempts (default: 12, or from env DB_MAX_RETRIES)
-            retry_delay: Initial delay between retries in seconds (default: 5.0, or from env DB_RETRY_DELAY)
+            max_retries: Maximum number of connection attempts (default: from Config.DB_MAX_RETRIES)
+            retry_delay: Initial delay between retries in seconds (default: from Config.DB_RETRY_DELAY)
         """
         self.config = Config()
         self.es: Optional[Elasticsearch] = None
 
-        # Allow environment variables to override defaults for testing/CI
+        # Use config values if not explicitly provided (for testing override)
         if max_retries is None:
-            max_retries = int(os.getenv('DB_MAX_RETRIES', '12'))
+            max_retries = self.config.DB_MAX_RETRIES
         if retry_delay is None:
-            retry_delay = float(os.getenv('DB_RETRY_DELAY', '5.0'))
+            retry_delay = self.config.DB_RETRY_DELAY
 
         self.max_retries = max_retries
         self.retry_delay = retry_delay

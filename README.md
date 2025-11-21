@@ -4,12 +4,13 @@
 [![Release](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/release.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/release.yml)
 [![Docker Publish](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/docker-publish.yml)
 [![PyPI Publish](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/pypi-publish.yml/badge.svg)](https://github.com/yangzq50/GradeSchoolMathSolver/actions/workflows/pypi-publish.yml)
-[![PyPI version](https://badge.fury.io/py/gradeschoolmathsolver.svg)](https://badge.fury.io/py/gradeschoolmathsolver)
+
+**📦 Docker Hub**:
+[![Docker Image Version](https://img.shields.io/docker/v/yangzq50/gradeschoolmathsolver/latest)](https://hub.docker.com/r/yangzq50/gradeschoolmathsolver)
+**📦 PyPI**:
+[![PyPI version](https://badge.fury.io/py/gradeschoolmathsolver.svg)](https://pypi.org/project/gradeschoolmathsolver/)
 
 An AI-powered Grade School Math Solver with RAG (Retrieval-Augmented Generation). Automatically generates arithmetic problems, tracks correct and incorrect answers, and provides personalized practice and exams. Ideal for learning, testing, and building adaptive math tutoring agents.
-
-**📦 Docker Hub**: [yangzq50/gradeschoolmathsolver](https://hub.docker.com/r/yangzq50/gradeschoolmathsolver)
-**📦 PyPI**: [gradeschoolmathsolver](https://pypi.org/project/gradeschoolmathsolver/)
 
 ![Homepage](https://github.com/user-attachments/assets/502a52cd-6b1a-4cc3-9995-1afe137255e4)
 
