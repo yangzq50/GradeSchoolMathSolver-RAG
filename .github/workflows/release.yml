@@ -27,7 +27,10 @@ jobs:
       id: get_tag
       run: |
         # Get the most recent tag
-        TAG_NAME=$(git describe --tags --abbrev=0)
+        if ! TAG_NAME=$(git describe --tags --abbrev=0 2>/dev/null); then
+          echo "Error: No tags found in repository"
+          exit 1
+        fi
         echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
         echo "Found tag: $TAG_NAME"
     
