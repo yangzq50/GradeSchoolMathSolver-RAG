@@ -64,11 +64,11 @@ class MariaDBDatabaseService(DatabaseService):
         while attempt < self.max_retries:
             try:
                 self.connection = mysql.connector.connect(
-                    host=getattr(self.config, 'MARIADB_HOST', 'localhost'),
-                    port=getattr(self.config, 'MARIADB_PORT', 3306),
-                    user=getattr(self.config, 'MARIADB_USER', 'root'),
-                    password=getattr(self.config, 'MARIADB_PASSWORD', ''),
-                    database=getattr(self.config, 'MARIADB_DATABASE', 'math_solver'),
+                    host=self.config.MARIADB_HOST,
+                    port=self.config.MARIADB_PORT,
+                    user=self.config.MARIADB_USER,
+                    password=self.config.MARIADB_PASSWORD,
+                    database=self.config.MARIADB_DATABASE,
                     autocommit=True,
                     connect_timeout=10
                 )

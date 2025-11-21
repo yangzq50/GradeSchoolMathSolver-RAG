@@ -38,7 +38,8 @@ def test_config_default_values():
     # MariaDB defaults
     assert config.MARIADB_HOST == 'localhost'
     assert config.MARIADB_PORT == 3306
-    assert config.MARIADB_USER == 'root'
+    assert config.MARIADB_USER == 'math_solver'
+    assert config.MARIADB_PASSWORD == 'math_solver_password'
     assert config.MARIADB_DATABASE == 'math_solver'
     
     # Elasticsearch defaults

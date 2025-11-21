@@ -72,8 +72,8 @@ class Config:
     # MariaDB Configuration
     MARIADB_HOST = os.getenv('MARIADB_HOST', 'localhost')
     MARIADB_PORT = int(os.getenv('MARIADB_PORT', '3306'))
-    MARIADB_USER = os.getenv('MARIADB_USER', 'root')
-    MARIADB_PASSWORD = os.getenv('MARIADB_PASSWORD', '')
+    MARIADB_USER = os.getenv('MARIADB_USER', 'math_solver')
+    MARIADB_PASSWORD = os.getenv('MARIADB_PASSWORD', 'math_solver_password')
     MARIADB_DATABASE = os.getenv('MARIADB_DATABASE', 'math_solver')
 
     # Database Connection Retry Configuration
