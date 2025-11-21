@@ -18,6 +18,7 @@ jobs:
         fetch-depth: 0  # Fetch all history to ensure we can create tags
     
     - name: Parse milestone title and create tag
+      id: create_tag
       uses: actions/github-script@v7
       with:
         script: |
@@ -50,7 +51,7 @@ jobs:
             tagName = `v${match[1]}.0.0`;
             console.log(`Matched pattern 3 (vx): ${tagName}`);
           } else {
-            console.log('Milestone title does not match any expected pattern. No tag will be created.');
+            core.setFailed(`Milestone title "${milestoneTitle}" does not match any expected pattern (vx.x.x, vx.x, or vx). No tag will be created.`);
             return;
           }
           
@@ -61,7 +62,7 @@ jobs:
               repo: context.repo.repo,
               ref: `tags/${tagName}`
             });
-            console.log(`Tag ${tagName} already exists. Skipping creation.`);
+            core.setFailed(`Tag ${tagName} already exists. Cannot create duplicate tag.`);
             return;
           } catch (error) {
             if (error.status !== 404) {
@@ -78,20 +79,34 @@ jobs:
             ref: 'heads/' + context.payload.repository.default_branch
           });
           const sha = ref.object.sha;
-          console.log(`Creating tag ${tagName} at commit ${sha}`);
+          console.log(`Creating annotated tag ${tagName} at commit ${sha}`);
           
-          // Create the tag
+          // Create an annotated tag object with a message
+          const tagMessage = `Release ${tagName}\n\nAutomatic tag created for milestone: ${milestoneTitle}`;
+          const { data: tagObject } = await github.rest.git.createTag({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            tag: tagName,
+            message: tagMessage,
+            object: sha,
+            type: 'commit'
+          });
+          
+          console.log(`Created tag object: ${tagObject.sha}`);
+          
+          // Create the reference to the annotated tag
           await github.rest.git.createRef({
             owner: context.repo.owner,
             repo: context.repo.repo,
             ref: `refs/tags/${tagName}`,
-            sha: sha
+            sha: tagObject.sha
           });
           
-          console.log(`Successfully created tag ${tagName}`);
+          console.log(`Successfully created annotated tag ${tagName}`);
           core.setOutput('tag_created', tagName);
+          core.setOutput('tag_sha', tagObject.sha);
     
     - name: Tag creation summary
       if: success()
       run: |
-        echo "✅ Milestone closed and tag creation process completed successfully"
+        echo "✅ Milestone closed and new tag created successfully: ${{ steps.create_tag.outputs.tag_created }}"

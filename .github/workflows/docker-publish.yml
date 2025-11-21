@@ -1,9 +1,12 @@
 name: Docker Hub Publish
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'  # Matches semantic version tags like v1.0.0, v2.1.3, etc.
+  workflow_run:
+    workflows: ["Auto Tag on Milestone Close"]
+    types:
+      - completed
+    branches:
+      - main  # Only run when milestone-tag workflow succeeds on main branch
 
 env:
   DOCKER_IMAGE_NAME: gradeschoolmathsolver
@@ -16,6 +19,8 @@ jobs:
   docker-build-and-push:
     runs-on: ubuntu-latest
     environment: prod  # Run in prod environment
+    # Only run if the triggering workflow succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     
     steps:
     - name: Checkout code
@@ -23,16 +28,28 @@ jobs:
       with:
         fetch-depth: 0  # Fetch all history to verify branch
     
+    - name: Get latest tag
+      id: get_tag
+      run: |
+        # Get the most recent tag
+        if ! TAG_NAME=$(git describe --tags --abbrev=0 2>/dev/null); then
+          echo "Error: No tags found in repository"
+          exit 1
+        fi
+        echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+        echo "Found tag: $TAG_NAME"
+    
     - name: Verify tag is on default branch
       id: verify_branch
       run: |
-        # Check if the current tag is reachable from the default branch
+        # Check if the latest tag is reachable from the default branch
+        TAG_NAME="${{ steps.get_tag.outputs.tag_name }}"
         DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
-        if git branch -r --contains ${{ github.ref }} | grep -q "origin/${DEFAULT_BRANCH}"; then
-          echo "Tag is on the default branch (${DEFAULT_BRANCH})"
+        if git branch -r --contains $TAG_NAME | grep -q "origin/${DEFAULT_BRANCH}"; then
+          echo "Tag $TAG_NAME is on the default branch (${DEFAULT_BRANCH})"
           echo "on_default_branch=true" >> $GITHUB_OUTPUT
         else
-          echo "Tag is NOT on the default branch (${DEFAULT_BRANCH}). Skipping Docker publish."
+          echo "Tag $TAG_NAME is NOT on the default branch (${DEFAULT_BRANCH}). Skipping Docker publish."
           echo "on_default_branch=false" >> $GITHUB_OUTPUT
         fi
     
@@ -56,7 +73,8 @@ jobs:
       id: version
       run: |
         # Extract version without 'v' prefix (e.g., v1.0.0 -> 1.0.0)
-        VERSION=${GITHUB_REF#refs/tags/v}
+        TAG_NAME="${{ steps.get_tag.outputs.tag_name }}"
+        VERSION=${TAG_NAME#v}
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         
         # Extract major, minor versions (e.g., 1.0.0 -> 1.0, 1)
