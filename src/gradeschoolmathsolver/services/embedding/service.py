@@ -1,12 +1,14 @@
 """
 Embedding Service
 Generates vector embeddings using the EmbeddingGemma model via Docker Model Runner
+
+This service now wraps the centralized model_access module for consistency.
+All actual HTTP calls to the embedding model are handled by model_access.
 """
 from typing import List, Optional, Union
 import logging
-import requests
-from requests.exceptions import RequestException, Timeout
 from gradeschoolmathsolver.config import Config
+from gradeschoolmathsolver import model_access
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -25,6 +27,9 @@ class EmbeddingService:
     The service is designed to work with Docker Desktop's Model Runner, which provides
     an OpenAI-compatible API at localhost:12434 by default.
 
+    Note: This service now uses the centralized model_access module for all
+    HTTP interactions with the embedding model.
+
     Attributes:
         config: Configuration object with embedding model settings
         max_retries: Maximum number of retry attempts for API calls
@@ -42,56 +47,6 @@ class EmbeddingService:
         self.config = Config()
         self.max_retries = max_retries
         self.timeout = timeout
-
-    def _call_embedding_api(self, text: Union[str, List[str]]) -> Optional[List[List[float]]]:
-        """
-        Make API call to generate embeddings
-
-        Note: This uses LLM_ENGINE from config for endpoint construction.
-        Docker Model Runner uses the same engine path for both LLM and embedding models.
-
-        Args:
-            text: Single text string or list of text strings
-
-        Returns:
-            List of embedding vectors (list of floats), or None if API call fails
-        """
-        # Normalize input to list
-        if isinstance(text, str):
-            texts = [text]
-        else:
-            texts = text
-
-        try:
-            # Docker Model Runner uses OpenAI-compatible embeddings endpoint
-            # The endpoint format: /engines/{engine}/v1/embeddings
-            response = requests.post(
-                f"{self.config.EMBEDDING_MODEL_URL}/engines/{self.config.LLM_ENGINE}/v1/embeddings",
-                json={
-                    "model": self.config.EMBEDDING_MODEL_NAME,
-                    "input": texts
-                },
-                timeout=self.timeout
-            )
-
-            if response.status_code == 200:
-                result = response.json()
-                # OpenAI embeddings API format: {"data": [{"embedding": [...]}], ...}
-                data = result.get('data', [])
-                if data:
-                    embeddings = [item.get('embedding', []) for item in data]
-                    # Return None if any embedding is empty or missing
-                    if embeddings and all(len(e) > 0 for e in embeddings):
-                        return embeddings
-
-            return None
-
-        except (Timeout, RequestException) as e:
-            logger.warning(f"Embedding API call failed: {e}")
-            return None
-        except Exception as e:
-            logger.error(f"Unexpected error in embedding API call: {e}")
-            return None
 
     def generate_embedding(self, text: str) -> Optional[List[float]]:
         """
@@ -112,22 +67,11 @@ class EmbeddingService:
             >>> print(len(embedding))  # Typically 768 or similar dimension
             768
         """
-        if not text or not isinstance(text, str):
-            logger.warning("Invalid input: text must be a non-empty string")
-            return None
-
-        # Try with retries
-        for attempt in range(self.max_retries):
-            embeddings = self._call_embedding_api(text)
-
-            if embeddings and len(embeddings) > 0:
-                return embeddings[0]
-
-            if attempt < self.max_retries - 1:
-                logger.info(f"Embedding generation attempt {attempt + 1}/{self.max_retries} failed, retrying...")
-
-        logger.warning(f"Failed to generate embedding after {self.max_retries} attempts")
-        return None
+        return model_access.generate_embedding(
+            text,
+            max_retries=self.max_retries,
+            timeout=self.timeout
+        )
 
     def generate_embeddings_batch(self, texts: List[str]) -> List[Optional[List[float]]]:
         """
@@ -156,45 +100,11 @@ class EmbeddingService:
             >>> print(embeddings[1] is None)  # Empty string -> None
             True
         """
-        if not texts or not isinstance(texts, list):
-            logger.warning("Invalid input: texts must be a non-empty list")
-            return []
-
-        # Create index mapping and filter valid texts
-        valid_indices = []
-        valid_texts = []
-        for i, text in enumerate(texts):
-            if text and isinstance(text, str):
-                valid_indices.append(i)
-                valid_texts.append(text)
-
-        if not valid_texts:
-            logger.warning("No valid texts to embed")
-            # Return list of None matching input length
-            return [None] * len(texts)
-
-        # Try with retries
-        embeddings_result = None
-        for attempt in range(self.max_retries):
-            embeddings_result = self._call_embedding_api(valid_texts)
-
-            if embeddings_result:
-                break
-
-            if attempt < self.max_retries - 1:
-                logger.info(f"Batch embedding generation attempt {attempt + 1}/{self.max_retries} failed, retrying...")
-
-        # Create output list matching input size, with None for invalid/empty texts
-        output: List[Optional[List[float]]] = [None] * len(texts)
-
-        if embeddings_result:
-            # Map valid embeddings back to their original positions
-            for valid_idx, embedding in zip(valid_indices, embeddings_result):
-                output[valid_idx] = embedding
-        else:
-            logger.warning(f"Failed to generate batch embeddings after {self.max_retries} attempts")
-
-        return output
+        return model_access.generate_embeddings_batch(
+            texts,
+            max_retries=self.max_retries,
+            timeout=self.timeout
+        )
 
     def is_available(self) -> bool:
         """
@@ -211,12 +121,7 @@ class EmbeddingService:
             >>> if service.is_available():
             ...     embedding = service.generate_embedding("test")
         """
-        try:
-            # Try a simple embedding with minimal text
-            result = self._call_embedding_api("test")
-            return result is not None and len(result) > 0
-        except Exception:
-            return False
+        return model_access.is_embedding_service_available()
 
 
 def main():

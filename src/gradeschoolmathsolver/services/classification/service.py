@@ -3,9 +3,8 @@ Question Classification Service
 Classifies math questions into predefined categories with robust error handling
 """
 import re
-import requests
-from requests.exceptions import RequestException, Timeout
 from gradeschoolmathsolver.config import Config
+from gradeschoolmathsolver import model_access
 
 
 class ClassificationService:
@@ -105,41 +104,28 @@ Equation: {equation}
 Respond with ONLY the category name, nothing else."""
 
         try:
-            # Use OpenAI-compatible chat/completions API
-            response = requests.post(
-                f"{self.config.AI_MODEL_URL}/engines/{self.config.LLM_ENGINE}/v1/chat/completions",
-                json={
-                    "model": self.config.AI_MODEL_NAME,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "You are a helpful math classification assistant."
-                        },
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ]
+            # Use centralized model access
+            messages = [
+                {
+                    "role": "system",
+                    "content": "You are a helpful math classification assistant."
                 },
-                timeout=self.timeout
-            )
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+            
+            response_text = model_access.generate_text_completion(messages, timeout=self.timeout)
+            
+            if response_text:
+                category = response_text.strip().lower()
+                # Validate the category
+                if category in self.categories:
+                    return category
 
-            if response.status_code == 200:
-                result = response.json()
-                # Extract content from OpenAI-compatible response
-                choices = result.get('choices', [])
-                if choices:
-                    category = str(choices[0].get('message', {}).get('content', '')).strip().lower()
-                    # Validate the category
-                    if category in self.categories:
-                        return category
-
-        except Timeout:
-            print("Timeout classifying with AI, falling back to rule-based")
-        except RequestException as e:
-            print(f"API error classifying with AI: {e}, falling back to rule-based")
         except Exception as e:
-            print(f"Unexpected error classifying with AI: {e}, falling back to rule-based")
+            print(f"Error classifying with AI: {e}, falling back to rule-based")
 
         # Fallback to rule-based
         return self._classify_rule_based(equation)

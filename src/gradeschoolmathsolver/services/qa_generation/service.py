@@ -4,10 +4,9 @@ Generates grade school math quiz problems based on difficulty level with retry l
 """
 import random
 from typing import Tuple
-import requests
-from requests.exceptions import RequestException, Timeout
 from gradeschoolmathsolver.models import Question
 from gradeschoolmathsolver.config import Config
+from gradeschoolmathsolver import model_access
 
 
 def format_number(value: float) -> str:
@@ -138,35 +137,24 @@ class QAGenerationService:
         Returns:
             Generated question text or empty string if failed
         """
-        try:
-            response = requests.post(
-                f"{self.config.AI_MODEL_URL}/engines/{self.config.LLM_ENGINE}/v1/chat/completions",
-                json={
-                    "model": self.config.AI_MODEL_NAME,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "You are a helpful math teacher creating grade school word problems."
-                        },
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ]
-                },
-                timeout=self.timeout
-            )
-
-            if response.status_code == 200:
-                result = response.json()
-                choices = result.get('choices', [])
-                if choices:
-                    content = choices[0].get('message', {}).get('content', '').strip()
-                    if content:
-                        return str(content)
-            return ""
-        except (Timeout, RequestException):
-            return ""
+        messages = [
+            {
+                "role": "system",
+                "content": "You are a helpful math teacher creating grade school word problems."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+        
+        result = model_access.generate_text_completion(
+            messages,
+            max_retries=1,  # Single attempt per call, outer loop handles retries
+            timeout=self.timeout
+        )
+        
+        return result if result else ""
 
     def generate_question_text(self, equation: str, answer: int) -> str:
         """

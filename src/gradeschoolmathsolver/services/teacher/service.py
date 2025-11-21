@@ -2,10 +2,10 @@
 Teacher Service
 Provides educational feedback for incorrect answers
 """
-import requests
 from typing import Optional
 from gradeschoolmathsolver.config import Config
 from gradeschoolmathsolver.models import TeacherFeedback
+from gradeschoolmathsolver import model_access
 
 
 class TeacherService:
@@ -74,8 +74,7 @@ class TeacherService:
         Returns:
             Feedback text or None if AI unavailable
         """
-        try:
-            prompt = f"""You are a helpful math teacher. A student answered a math question incorrectly.
+        prompt = f"""You are a helpful math teacher. A student answered a math question incorrectly.
 
 Question: {question}
 Equation: {equation}
@@ -92,32 +91,21 @@ Keep your explanation clear, encouraging, and educational.
 Focus on helping the student understand the concept, not just
 giving them the answer."""
 
-            # Use OpenAI-compatible chat/completions API
-            response = requests.post(
-                f"{self.config.AI_MODEL_URL}/engines/{self.config.LLM_ENGINE}/v1/chat/completions",
-                json={
-                    "model": self.config.AI_MODEL_NAME,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "You are a patient and encouraging math teacher."
-                        },
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ]
+        try:
+            # Use centralized model access
+            messages = [
+                {
+                    "role": "system",
+                    "content": "You are a patient and encouraging math teacher."
                 },
-                timeout=30
-            )
-
-            if response.status_code == 200:
-                result = response.json()
-                # Extract content from OpenAI-compatible response
-                choices = result.get('choices', [])
-                if choices:
-                    content = choices[0].get('message', {}).get('content', '').strip()
-                    return str(content) if content else None
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+            
+            content = model_access.generate_text_completion(messages, timeout=30)
+            return str(content) if content else None
 
         except Exception as e:
             print(f"Error generating AI feedback: {e}")

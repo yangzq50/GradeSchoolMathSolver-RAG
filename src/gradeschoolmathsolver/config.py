@@ -26,13 +26,16 @@ class Config:
     Configuration is immutable after initialization.
 
     AI Model Service:
-        AI_MODEL_URL: URL of the AI model service endpoint
-        AI_MODEL_NAME: Name/identifier of the AI model to use
+        AI_MODEL_URL: URL of the AI model service endpoint (deprecated, use GENERATION_SERVICE_URL)
+        AI_MODEL_NAME: Name/identifier of the AI model to use (deprecated, use GENERATION_MODEL_NAME)
         LLM_ENGINE: LLM engine type (e.g., 'llama.cpp')
+        GENERATION_SERVICE_URL: Full URL for text generation endpoint
+        GENERATION_MODEL_NAME: Name of the generation model
 
     Embedding Service:
-        EMBEDDING_MODEL_URL: URL of the embedding service endpoint
+        EMBEDDING_MODEL_URL: URL of the embedding service endpoint (deprecated, use EMBEDDING_SERVICE_URL)
         EMBEDDING_MODEL_NAME: Name/identifier of the embedding model to use
+        EMBEDDING_SERVICE_URL: Full URL for embedding endpoint
 
     Database Settings:
         DATABASE_BACKEND: Database backend to use ('elasticsearch' or 'mariadb')
@@ -64,10 +67,23 @@ class Config:
     AI_MODEL_URL = os.getenv('AI_MODEL_URL', 'http://localhost:12434')
     AI_MODEL_NAME = os.getenv('AI_MODEL_NAME', 'ai/llama3.2:1B-Q4_0')
     LLM_ENGINE = os.getenv('LLM_ENGINE', 'llama.cpp')
+    
+    # New configurable service endpoints
+    GENERATION_SERVICE_URL = os.getenv(
+        'GENERATION_SERVICE_URL',
+        f"{os.getenv('AI_MODEL_URL', 'http://localhost:12434')}/engines/{os.getenv('LLM_ENGINE', 'llama.cpp')}/v1/chat/completions"
+    )
+    GENERATION_MODEL_NAME = os.getenv('GENERATION_MODEL_NAME', os.getenv('AI_MODEL_NAME', 'ai/llama3.2:1B-Q4_0'))
 
     # Embedding Service Configuration
     EMBEDDING_MODEL_URL = os.getenv('EMBEDDING_MODEL_URL', 'http://localhost:12434')
     EMBEDDING_MODEL_NAME = os.getenv('EMBEDDING_MODEL_NAME', 'ai/embeddinggemma:300M-Q8_0')
+    
+    # New configurable embedding endpoint
+    EMBEDDING_SERVICE_URL = os.getenv(
+        'EMBEDDING_SERVICE_URL',
+        f"{os.getenv('EMBEDDING_MODEL_URL', 'http://localhost:12434')}/engines/{os.getenv('LLM_ENGINE', 'llama.cpp')}/v1/embeddings"
+    )
 
     # Database Backend Selection
     DATABASE_BACKEND = os.getenv('DATABASE_BACKEND', 'mariadb')  # 'elasticsearch' or 'mariadb'
