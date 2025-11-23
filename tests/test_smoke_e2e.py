@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 @patch.dict(os.environ, {'DATABASE_BACKEND': 'elasticsearch'})
 @patch('gradeschoolmathsolver.services.database.elasticsearch_backend.Elasticsearch')
-@patch('gradeschoolmathsolver.services.qa_generation.service.requests.post')
+@patch('gradeschoolmathsolver.model_access.requests.post')
 def test_full_exam_flow_with_mocked_external_services(mock_requests_post, mock_elasticsearch):  # noqa: C901
     """
     End-to-end smoke test: Generate questions, take exam, process results
@@ -264,7 +264,7 @@ def test_exam_flow_without_elasticsearch(mock_elasticsearch):
 
 @patch.dict(os.environ, {'DATABASE_BACKEND': 'elasticsearch'})
 @patch('gradeschoolmathsolver.services.database.elasticsearch_backend.Elasticsearch')
-@patch('gradeschoolmathsolver.services.qa_generation.service.requests.post')
+@patch('gradeschoolmathsolver.model_access.requests.post')
 def test_classification_integration(mock_requests_post, mock_elasticsearch):
     """
     Test that question classification works in the full flow
