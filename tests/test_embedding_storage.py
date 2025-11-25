@@ -196,6 +196,19 @@ class TestElasticsearchEmbeddingSchema:
         assert fields['equation_embedding']['dims'] == 512
         assert fields['equation_embedding']['similarity'] == 'cosine'
 
+    def test_elasticsearch_embedding_fields_empty_dimensions(self):
+        """Test that embedding fields use default dimension when dimensions list is empty"""
+        from gradeschoolmathsolver.services.database.schemas import get_embedding_fields_elasticsearch
+
+        fields = get_embedding_fields_elasticsearch(
+            column_names=['test_embedding'],
+            dimensions=[],
+            similarity='cosine'
+        )
+
+        assert 'test_embedding' in fields
+        assert fields['test_embedding']['dims'] == 768  # Default dimension
+
     def test_elasticsearch_schema_includes_embeddings(self):
         """Test that answer history schema includes embedding fields for Elasticsearch"""
         from gradeschoolmathsolver.services.database.schemas import get_answer_history_schema_for_backend
@@ -252,6 +265,18 @@ class TestMariaDBEmbeddingSchema:
         # Both should use VECTOR type with specified dimensions
         assert columns['question_embedding'] == 'VECTOR(768)'
         assert columns['equation_embedding'] == 'VECTOR(512)'
+
+    def test_mariadb_embedding_columns_empty_dimensions(self):
+        """Test that embedding columns use default dimension when dimensions list is empty"""
+        from gradeschoolmathsolver.services.database.schemas import get_embedding_columns_mariadb
+
+        columns = get_embedding_columns_mariadb(
+            column_names=['test_embedding'],
+            dimensions=[]
+        )
+
+        assert 'test_embedding' in columns
+        assert columns['test_embedding'] == 'VECTOR(768)'  # Default dimension
 
     def test_mariadb_embedding_indexes_generation(self):
         """Test that vector indexes are generated correctly for MariaDB"""

@@ -228,8 +228,14 @@ def get_embedding_fields_elasticsearch(
         Dict of field mappings for Elasticsearch
     """
     fields = {}
+    default_dim = 768  # Default dimension if dimensions list is empty
     for i, col_name in enumerate(column_names):
-        dim = dimensions[i] if i < len(dimensions) else dimensions[-1]
+        if not dimensions:
+            dim = default_dim
+        elif i < len(dimensions):
+            dim = dimensions[i]
+        else:
+            dim = dimensions[-1]
         fields[col_name] = {
             "type": "dense_vector",
             "dims": dim,
@@ -257,8 +263,14 @@ def get_embedding_columns_mariadb(
         Dict of column name to column definition
     """
     columns = {}
+    default_dim = 768  # Default dimension if dimensions list is empty
     for i, col_name in enumerate(column_names):
-        dim = dimensions[i] if i < len(dimensions) else dimensions[-1]
+        if not dimensions:
+            dim = default_dim
+        elif i < len(dimensions):
+            dim = dimensions[i]
+        else:
+            dim = dimensions[-1]
         # Use VECTOR type with specified dimension for native vector storage
         columns[col_name] = f"VECTOR({dim})"
     return columns
