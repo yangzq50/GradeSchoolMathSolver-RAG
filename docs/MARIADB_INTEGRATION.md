@@ -59,6 +59,8 @@ CREATE TABLE `quiz_history` (
     `category` VARCHAR(100) NOT NULL,
     `timestamp` TIMESTAMP NOT NULL,
     `reviewed` BOOLEAN DEFAULT FALSE,
+    `question_embedding` BLOB,
+    `equation_embedding` BLOB,
     INDEX idx_username (username),
     INDEX idx_timestamp (timestamp),
     INDEX idx_category (category),
@@ -77,6 +79,8 @@ CREATE TABLE `quiz_history` (
 - `category`: Question category (addition, subtraction, etc.)
 - `timestamp`: When the answer was recorded
 - `reviewed`: Whether this mistake has been reviewed
+- `question_embedding`: Vector embedding of the question text (BLOB, for RAG features)
+- `equation_embedding`: Vector embedding of the equation (BLOB, for RAG features)
 
 **Indexes**:
 - `idx_username`: Fast filtering by user
@@ -96,6 +100,8 @@ is_correct: TRUE
 category: "addition"
 timestamp: "2025-11-17T10:15:30.000000"
 reviewed: FALSE
+question_embedding: <binary vector data>
+equation_embedding: <binary vector data>
 ```
 
 ## Configuration
@@ -117,6 +123,28 @@ MARIADB_DATABASE=math_solver
 
 # Quiz history table name (for compatibility)
 ELASTICSEARCH_INDEX=quiz_history
+
+# Embedding Storage Configuration (for RAG features)
+EMBEDDING_COLUMN_COUNT=2
+EMBEDDING_DIMENSIONS=768
+```
+
+### Embedding Storage Configuration
+
+The schema supports configurable embedding columns for RAG (Retrieval-Augmented Generation) features. Configuration options:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `EMBEDDING_COLUMN_COUNT` | 2 | Number of embedding columns per record |
+| `EMBEDDING_DIMENSIONS` | 768 | Dimension(s) for embedding vectors (comma-separated for different dimensions per column) |
+
+**Default Embedding Columns**:
+- `question_embedding`: Vector embedding of the question text
+- `equation_embedding`: Vector embedding of the mathematical equation
+
+**Multiple Dimensions**: If you need different dimensions for each column, use comma-separated values:
+```bash
+EMBEDDING_DIMENSIONS=768,512
 ```
 
 ### Database Setup

@@ -61,6 +61,11 @@ class Config:
 
     Service Toggles:
         TEACHER_SERVICE_ENABLED: Enable/disable teacher feedback feature
+
+    Embedding Storage Settings:
+        EMBEDDING_COLUMN_COUNT: Number of embedding columns per record (default: 2)
+        EMBEDDING_DIMENSIONS: Dimension(s) for each embedding column (default: 768)
+        ELASTICSEARCH_VECTOR_SIMILARITY: Similarity metric for vector search (default: cosine)
     """
 
     # AI Model Service Configuration
@@ -131,3 +136,16 @@ class Config:
 
     # Teacher Service Configuration
     TEACHER_SERVICE_ENABLED = os.getenv('TEACHER_SERVICE_ENABLED', 'True').lower() == 'true'
+
+    # Embedding Storage Configuration
+    # Number of embedding columns to store per record (e.g., question_embedding, equation_embedding)
+    EMBEDDING_COLUMN_COUNT = int(os.getenv('EMBEDDING_COLUMN_COUNT', '2'))
+
+    # Dimension of each embedding column (typically 768 for EmbeddingGemma)
+    # Can be a single value (applied to all columns) or comma-separated list for each column
+    _embedding_dims_str = os.getenv('EMBEDDING_DIMENSIONS', '768')
+    EMBEDDING_DIMENSIONS = [int(d.strip()) for d in _embedding_dims_str.split(',')]
+
+    # Elasticsearch-specific: similarity metric for vector search
+    # Options: 'cosine', 'dot_product', 'l2_norm'
+    ELASTICSEARCH_VECTOR_SIMILARITY = os.getenv('ELASTICSEARCH_VECTOR_SIMILARITY', 'cosine')
