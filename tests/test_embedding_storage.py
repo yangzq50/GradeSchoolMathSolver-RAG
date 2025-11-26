@@ -342,9 +342,14 @@ class TestEmbeddingSourceMapping:
             importlib.reload(config_module)
             from gradeschoolmathsolver.services.database import schemas
             importlib.reload(schemas)
-            from gradeschoolmathsolver.services.database.schemas import validate_embedding_config
+            from gradeschoolmathsolver.services.database.schemas import (
+                validate_embedding_config,
+                get_answer_history_text_columns
+            )
 
-            assert validate_embedding_config() is True
+            # Use the real schema columns
+            valid_columns = get_answer_history_text_columns()
+            assert validate_embedding_config(valid_columns) is True
         finally:
             # Restore original values
             for key, value in original_values.items():
@@ -362,10 +367,15 @@ class TestEmbeddingSourceMapping:
             importlib.reload(config_module)
             from gradeschoolmathsolver.services.database import schemas
             importlib.reload(schemas)
-            from gradeschoolmathsolver.services.database.schemas import validate_embedding_config
+            from gradeschoolmathsolver.services.database.schemas import (
+                validate_embedding_config,
+                get_answer_history_text_columns
+            )
 
+            # Use the real schema columns
+            valid_columns = get_answer_history_text_columns()
             with pytest.raises(ValueError, match="does not exist in database schema"):
-                validate_embedding_config()
+                validate_embedding_config(valid_columns)
 
     def test_validate_embedding_config_custom_valid_columns(self):
         """Test that validate_embedding_config accepts custom valid source columns"""
@@ -389,7 +399,7 @@ class TestEmbeddingSourceMapping:
             from gradeschoolmathsolver.services.database.schemas import validate_embedding_config
 
             # Should accept custom valid_source_columns
-            assert validate_embedding_config(valid_source_columns=['question', 'equation', 'custom']) is True
+            assert validate_embedding_config(['question', 'equation', 'custom']) is True
         finally:
             # Restore original values
             for key, value in original_values.items():
@@ -397,6 +407,19 @@ class TestEmbeddingSourceMapping:
                     os.environ[key] = value
                 elif key in os.environ:
                     del os.environ[key]
+
+    def test_get_answer_history_text_columns(self):
+        """Test that get_answer_history_text_columns returns text columns from schema"""
+        from gradeschoolmathsolver.services.database.schemas import get_answer_history_text_columns
+
+        text_columns = get_answer_history_text_columns()
+
+        # Should include only text columns from the schema
+        assert 'question' in text_columns
+        assert 'equation' in text_columns
+        # Should not include non-text columns
+        assert 'username' not in text_columns
+        assert 'record_id' not in text_columns
 
 
 class TestElasticsearchEmbeddingSchema:
