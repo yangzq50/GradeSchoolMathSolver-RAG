@@ -583,8 +583,8 @@ class TestMariaDBEmbeddingSchema:
         for table_name, table_schema in tables.items():
             columns = table_schema['columns']
             assert 'record_id' in columns
-            # VARCHAR(64) is used because MariaDB vector indexes require primary key max 256 bytes
-            assert columns['record_id'] == 'VARCHAR(64) PRIMARY KEY'
+            # CHAR(36) is used because MariaDB vector indexes require primary key max 256 bytes
+            assert columns['record_id'] == 'CHAR(36) CHARACTER SET ascii PRIMARY KEY'
             assert 'embedding' in columns
             assert columns['embedding'] == 'VECTOR(768) NOT NULL'
 

@@ -49,7 +49,7 @@ created_at: "2025-11-17T10:00:00.000000"
 
 ```sql
 CREATE TABLE `quiz_history` (
-    `record_id` VARCHAR(255) PRIMARY KEY,
+    `record_id` CHAR(36) CHARACTER SET ascii PRIMARY KEY,
     `username` VARCHAR(255) NOT NULL,
     `question` TEXT NOT NULL,
     `equation` VARCHAR(500) NOT NULL,

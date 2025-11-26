@@ -176,7 +176,7 @@ MARIADB_TYPE_MAPPING = {
 # Each entry: (column_name, elasticsearch_type, mariadb_type, is_text_column)
 # The is_text_column flag indicates if this column can be used as an embedding source.
 ANSWER_HISTORY_SCHEMA_COLUMNS = [
-    ('record_id', 'keyword', 'VARCHAR(255) PRIMARY KEY', False),
+    ('record_id', 'keyword', 'CHAR(36) CHARACTER SET ascii PRIMARY KEY', False),
     ('username', 'keyword', 'VARCHAR(255) NOT NULL', False),
     ('question', 'text', 'TEXT NOT NULL', True),  # Text column - can be embedding source
     ('equation', 'text', 'VARCHAR(500) NOT NULL', True),  # Text column - can be embedding source
@@ -444,8 +444,8 @@ def get_embedding_table_schemas_mariadb(
     - record_id: PRIMARY KEY that references the main table
     - embedding: VECTOR column with a VECTOR INDEX
 
-    Note: The record_id is limited to VARCHAR(64) because MariaDB vector indexes
-    require primary keys to be max 256 bytes. VARCHAR(64) with UTF-8 is safe.
+    Note: The record_id is limited to CHAR(36) because MariaDB vector indexes
+    require primary keys to be max 256 bytes. CHAR(36) with ASCII is safe.
 
     Args:
         base_table_name: Name of the main table (e.g., 'quiz_history')
@@ -471,9 +471,9 @@ def get_embedding_table_schemas_mariadb(
 
         tables[table_name] = {
             "columns": {
-                # Use VARCHAR(64) for record_id because MariaDB vector indexes
+                # Use CHAR(36) for record_id because MariaDB vector indexes
                 # require primary key to be max 256 bytes
-                "record_id": "VARCHAR(64) PRIMARY KEY",
+                "record_id": "CHAR(36) CHARACTER SET ascii PRIMARY KEY",
                 "embedding": f"VECTOR({dim}) NOT NULL"
             },
             "indexes": [
