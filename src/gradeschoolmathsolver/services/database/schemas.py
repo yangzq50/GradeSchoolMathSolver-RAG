@@ -444,6 +444,9 @@ def get_embedding_table_schemas_mariadb(
     - record_id: PRIMARY KEY that references the main table
     - embedding: VECTOR column with a VECTOR INDEX
 
+    Note: The record_id is limited to VARCHAR(64) because MariaDB vector indexes
+    require primary keys to be max 256 bytes. VARCHAR(64) with UTF-8 is safe.
+
     Args:
         base_table_name: Name of the main table (e.g., 'quiz_history')
         embedding_config: Embedding configuration from get_embedding_config()
@@ -468,7 +471,9 @@ def get_embedding_table_schemas_mariadb(
 
         tables[table_name] = {
             "columns": {
-                "record_id": "VARCHAR(255) PRIMARY KEY",
+                # Use VARCHAR(64) for record_id because MariaDB vector indexes
+                # require primary key to be max 256 bytes
+                "record_id": "VARCHAR(64) PRIMARY KEY",
                 "embedding": f"VECTOR({dim}) NOT NULL"
             },
             "indexes": [
