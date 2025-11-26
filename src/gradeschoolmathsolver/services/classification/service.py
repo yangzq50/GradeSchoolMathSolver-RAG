@@ -115,9 +115,9 @@ Respond with ONLY the category name, nothing else."""
                     "content": prompt
                 }
             ]
-            
+
             response_text = model_access.generate_text_completion(messages, timeout=self.timeout)
-            
+
             if response_text:
                 category = response_text.strip().lower()
                 # Validate the category

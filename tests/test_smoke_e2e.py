@@ -23,11 +23,11 @@ def test_full_exam_flow_with_mocked_external_services(mock_requests_post, mock_e
     import importlib
     import gradeschoolmathsolver.config as config_module
     importlib.reload(config_module)
-    
+
     # Reset database service to pick up elasticsearch backend
     from gradeschoolmathsolver.services.database.service import set_database_service
     set_database_service(None)
-    
+
     from gradeschoolmathsolver.services.exam import ExamService
     from gradeschoolmathsolver.models import ExamRequest
     from elasticsearch import NotFoundError
@@ -177,11 +177,11 @@ def test_exam_flow_without_ai_model(mock_elasticsearch):
     import importlib
     import gradeschoolmathsolver.config as config_module
     importlib.reload(config_module)
-    
+
     # Reset database service to pick up elasticsearch backend
     from gradeschoolmathsolver.services.database.service import set_database_service
     set_database_service(None)
-    
+
     from gradeschoolmathsolver.services.exam import ExamService
     from gradeschoolmathsolver.models import ExamRequest
 
@@ -228,11 +228,11 @@ def test_exam_flow_without_elasticsearch(mock_elasticsearch):
     import importlib
     import gradeschoolmathsolver.config as config_module
     importlib.reload(config_module)
-    
+
     # Reset database service to pick up elasticsearch backend
     from gradeschoolmathsolver.services.database.service import set_database_service
     set_database_service(None)
-    
+
     from gradeschoolmathsolver.services.exam import ExamService
     from gradeschoolmathsolver.models import ExamRequest
 
@@ -273,11 +273,11 @@ def test_classification_integration(mock_requests_post, mock_elasticsearch):
     import importlib
     import gradeschoolmathsolver.config as config_module
     importlib.reload(config_module)
-    
+
     # Reset database service to pick up elasticsearch backend
     from gradeschoolmathsolver.services.database.service import set_database_service
     set_database_service(None)
-    
+
     from gradeschoolmathsolver.services.exam import ExamService
     from gradeschoolmathsolver.models import ExamRequest
 
