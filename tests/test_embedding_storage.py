@@ -353,6 +353,51 @@ class TestEmbeddingSourceMapping:
                 elif key in os.environ:
                     del os.environ[key]
 
+    def test_validate_embedding_config_invalid_source_column(self):
+        """Test that validate_embedding_config raises ValueError for invalid source columns"""
+        env_vars = {'EMBEDDING_SOURCE_COLUMNS': 'invalid_column,equation'}
+
+        with patch.dict(os.environ, env_vars, clear=False):
+            import gradeschoolmathsolver.config as config_module
+            importlib.reload(config_module)
+            from gradeschoolmathsolver.services.database import schemas
+            importlib.reload(schemas)
+            from gradeschoolmathsolver.services.database.schemas import validate_embedding_config
+
+            with pytest.raises(ValueError, match="does not exist in database schema"):
+                validate_embedding_config()
+
+    def test_validate_embedding_config_custom_valid_columns(self):
+        """Test that validate_embedding_config accepts custom valid source columns"""
+        # Clean up environment to ensure defaults
+        env_vars_to_clear = [
+            'EMBEDDING_COLUMN_COUNT', 'EMBEDDING_DIMENSIONS',
+            'ELASTICSEARCH_VECTOR_SIMILARITY', 'EMBEDDING_COLUMN_NAMES',
+            'EMBEDDING_SOURCE_COLUMNS'
+        ]
+        original_values = {k: os.environ.get(k) for k in env_vars_to_clear}
+
+        try:
+            for key in env_vars_to_clear:
+                if key in os.environ:
+                    del os.environ[key]
+
+            import gradeschoolmathsolver.config as config_module
+            importlib.reload(config_module)
+            from gradeschoolmathsolver.services.database import schemas
+            importlib.reload(schemas)
+            from gradeschoolmathsolver.services.database.schemas import validate_embedding_config
+
+            # Should accept custom valid_source_columns
+            assert validate_embedding_config(valid_source_columns=['question', 'equation', 'custom']) is True
+        finally:
+            # Restore original values
+            for key, value in original_values.items():
+                if value is not None:
+                    os.environ[key] = value
+                elif key in os.environ:
+                    del os.environ[key]
+
 
 class TestElasticsearchEmbeddingSchema:
     """Test Elasticsearch schema generation with embeddings"""

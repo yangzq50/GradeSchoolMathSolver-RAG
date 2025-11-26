@@ -243,13 +243,19 @@ def get_embedding_source_mapping() -> Dict[str, str]:
     }
 
 
-def validate_embedding_config() -> bool:
+def validate_embedding_config(valid_source_columns: Optional[List[str]] = None) -> bool:
     """
     Validate embedding configuration for consistency.
 
     Checks that:
     - EMBEDDING_COLUMN_COUNT matches the length of column names and source columns
     - All lists are properly aligned after extension/truncation
+    - Source columns exist in the database schema (if valid_source_columns provided)
+
+    Args:
+        valid_source_columns: Optional list of valid source column names from the database schema.
+                              If provided, validates that all configured source columns exist in this list.
+                              Defaults to ['question', 'equation'] if not provided.
 
     Returns:
         True if configuration is valid
@@ -277,6 +283,18 @@ def validate_embedding_config() -> bool:
             f"Dimensions count ({len(config['dimensions'])}) "
             f"does not match EMBEDDING_COLUMN_COUNT ({column_count})"
         )
+
+    # Validate source columns exist in the database schema
+    # Default valid source columns are the text columns in answer_history schema
+    if valid_source_columns is None:
+        valid_source_columns = ['question', 'equation']
+
+    for source_col in config['source_columns']:
+        if source_col not in valid_source_columns:
+            raise ValueError(
+                f"Source column '{source_col}' does not exist in database schema. "
+                f"Valid source columns are: {valid_source_columns}"
+            )
 
     return True
 
@@ -424,9 +442,20 @@ def get_answer_history_schema_for_backend(
 
     Returns:
         Schema definition dict appropriate for the backend
+
+    Raises:
+        ValueError: If embedding configuration is invalid (when include_embeddings is True)
     """
     # Get embedding configuration
     embedding_config = get_embedding_config()
+
+    # Define valid source columns from the base answer history schema
+    # These are the text columns that can be used to generate embeddings
+    valid_source_columns = ['question', 'equation']
+
+    # Validate embedding configuration if embeddings are enabled
+    if include_embeddings:
+        validate_embedding_config(valid_source_columns)
 
     if backend == 'elasticsearch':
         properties: Dict[str, Any] = {
