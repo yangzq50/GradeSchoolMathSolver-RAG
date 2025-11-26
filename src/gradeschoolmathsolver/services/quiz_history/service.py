@@ -148,11 +148,18 @@ class QuizHistoryService:
         embedding_service = self._get_embedding_service()
 
         # Map source column names to their values from the history object
+        # Note: 'equation' and 'user_equation' both map to the same value for
+        # backward compatibility (user_equation is the legacy field name)
         source_values = {
             'question': history.question,
             'equation': history.user_equation,
-            'user_equation': history.user_equation,
         }
+
+        # Get embedding config once before the loop for efficiency
+        from gradeschoolmathsolver.services.database.schemas import get_embedding_config
+        embedding_config = get_embedding_config()
+        col_names = embedding_config['column_names']
+        dimensions = embedding_config['dimensions']
 
         # Generate embeddings for each configured source column
         for source_col, embedding_col in self.source_to_embedding_map.items():
@@ -173,12 +180,6 @@ class QuizHistoryService:
                 doc[embedding_col] = embedding
             else:
                 # Use zero vector as default for NOT NULL constraint compatibility
-                # Get dimensions from config
-                from gradeschoolmathsolver.services.database.schemas import get_embedding_config
-                config = get_embedding_config()
-                col_names = config['column_names']
-                dimensions = config['dimensions']
-
                 # Find the dimension for this embedding column
                 dim = dimensions[0]  # Default to first dimension
                 if embedding_col in col_names:
