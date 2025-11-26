@@ -140,12 +140,16 @@ class QuizHistoryService:
             doc: Document dictionary to add embeddings to (modified in-place)
             history: QuizHistory object containing source text data
 
-        Note:
-            If the embedding service is unavailable or generation fails,
-            the embeddings are set to zero vectors to maintain schema compatibility
-            with NOT NULL constraints on VECTOR columns.
+        Raises:
+            RuntimeError: If embedding service is unavailable or embedding generation fails.
+                          Authentic embeddings are required for proper RAG functionality.
         """
         embedding_service = self._get_embedding_service()
+        if embedding_service is None:
+            raise RuntimeError(
+                "Embedding service is unavailable. Cannot add quiz history without authentic embeddings. "
+                "Please ensure the embedding service is running and accessible."
+            )
 
         # Map source column names to their values from the history object
         # Note: 'equation' and 'user_equation' both map to the same value for
@@ -155,12 +159,6 @@ class QuizHistoryService:
             'equation': history.user_equation,
         }
 
-        # Get embedding config once before the loop for efficiency
-        from gradeschoolmathsolver.services.database.schemas import get_embedding_config
-        embedding_config = get_embedding_config()
-        col_names = embedding_config['column_names']
-        dimensions = embedding_config['dimensions']
-
         # Generate embeddings for each configured source column
         for source_col, embedding_col in self.source_to_embedding_map.items():
             # Get the source text value
@@ -169,25 +167,29 @@ class QuizHistoryService:
                 # Also check if source column is in the doc itself
                 source_text = doc.get(source_col, '')
 
-            embedding = None
-            if embedding_service and source_text:
-                try:
-                    embedding = embedding_service.generate_embedding(source_text)
-                except Exception as e:
-                    print(f"Warning: Failed to generate embedding for {source_col}: {e}")
+            if not source_text:
+                raise RuntimeError(
+                    f"Cannot generate embedding for column '{embedding_col}': "
+                    f"source column '{source_col}' is empty or not found. "
+                    f"Please ensure the source text is provided."
+                )
 
-            if embedding:
-                doc[embedding_col] = embedding
-            else:
-                # Use zero vector as default for NOT NULL constraint compatibility
-                # Find the dimension for this embedding column
-                dim = dimensions[0]  # Default to first dimension
-                if embedding_col in col_names:
-                    idx = col_names.index(embedding_col)
-                    if idx < len(dimensions):
-                        dim = dimensions[idx]
+            try:
+                embedding = embedding_service.generate_embedding(source_text)
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to generate embedding for column '{embedding_col}' "
+                    f"from source column '{source_col}': {e}"
+                ) from e
 
-                doc[embedding_col] = [0.0] * dim
+            if embedding is None:
+                raise RuntimeError(
+                    f"Embedding service returned None for column '{embedding_col}' "
+                    f"from source column '{source_col}'. "
+                    f"Please check the embedding service configuration."
+                )
+
+            doc[embedding_col] = embedding
 
     def search_relevant_history(self, username: str, question: str,
                                 category: Optional[str] = None,
