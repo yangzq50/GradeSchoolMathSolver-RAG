@@ -3,9 +3,15 @@ Database Service - Abstract Interface
 
 Provides a unified interface for database operations, allowing easy switching between backends.
 Currently supports Elasticsearch and MariaDB.
+
+Embedding Generation:
+The database service handles embedding generation internally when inserting records.
+Other services do not need to know about the database backend or how embeddings are stored.
+For MariaDB, embeddings are stored in separate tables (one per embedding column).
+For Elasticsearch, embeddings are stored in the same document.
 """
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Callable
 
 
 class DatabaseService(ABC):
@@ -16,6 +22,12 @@ class DatabaseService(ABC):
     implementations must support. This allows the application to switch
     between different database backends (Elasticsearch, MariaDB, etc.)
     without changing business logic.
+
+    Embedding Generation:
+    The database service handles embedding generation internally. Callers can
+    provide an embedding generator function to insert_record_with_embeddings()
+    and the service will handle generating and storing embeddings appropriately
+    for the backend.
     """
 
     @abstractmethod
@@ -184,6 +196,101 @@ class DatabaseService(ABC):
             int: Number of matching records
         """
         pass
+
+    def insert_record_with_embeddings(
+        self,
+        collection_name: str,
+        record: Dict[str, Any],
+        source_texts: Dict[str, str],
+        embedding_generator: Callable[[str], Optional[List[float]]],
+        record_id: Optional[str] = None
+    ) -> Optional[str]:
+        """
+        Insert a record with automatically generated embeddings.
+
+        This method generates embeddings from the provided source texts and stores
+        them appropriately for the database backend:
+        - For MariaDB: Embeddings are stored in separate tables (one per embedding column)
+        - For Elasticsearch: Embeddings are added to the document
+
+        The default implementation calls the embedding generator and adds embeddings
+        to the record before calling insert_record. Backend-specific implementations
+        may override this for different storage strategies (e.g., separate tables).
+
+        Args:
+            collection_name: Name of the collection
+            record: Record data (without embeddings)
+            source_texts: Dict mapping source column name -> text to generate embedding from
+                         Example: {'question': 'What is 5+3?', 'equation': '5+3'}
+            embedding_generator: Function that takes text and returns embedding vector
+            record_id: Optional record ID (auto-generated if not provided)
+
+        Returns:
+            str: Record ID if successful, None otherwise
+
+        Raises:
+            RuntimeError: If embedding generation fails
+        """
+        from .schemas import get_embedding_source_mapping
+
+        # Get source-to-embedding column mapping
+        source_to_embedding = get_embedding_source_mapping()
+
+        # Generate embeddings for each source column
+        embeddings = {}
+        for source_col, embedding_col in source_to_embedding.items():
+            if source_col in source_texts:
+                source_text = source_texts[source_col]
+                if not source_text:
+                    raise RuntimeError(
+                        f"Cannot generate embedding for column '{embedding_col}': "
+                        f"source column '{source_col}' is empty."
+                    )
+                embedding = embedding_generator(source_text)
+                if embedding is None:
+                    raise RuntimeError(
+                        f"Embedding generation failed for column '{embedding_col}' "
+                        f"from source column '{source_col}'."
+                    )
+                embeddings[embedding_col] = list(embedding)
+
+        # Add embeddings to record
+        record_with_embeddings = record.copy()
+        record_with_embeddings.update(embeddings)
+
+        # Use standard insert
+        return self.insert_record(collection_name, record_with_embeddings, record_id)
+
+    def create_quiz_history_collection(
+        self, collection_name: str, include_embeddings: bool = True
+    ) -> bool:
+        """
+        Create the quiz history collection with embedding support.
+
+        This method creates the main collection and any additional structures
+        needed for embedding storage based on the database backend:
+        - For Elasticsearch: Embeddings are stored in the same document
+        - For MariaDB: Separate embedding tables are created (one per embedding column)
+
+        The default implementation uses get_answer_history_schema_for_backend()
+        to get the schema and creates the collection. Backend-specific implementations
+        may override this to create additional structures.
+
+        Args:
+            collection_name: Name of the collection (e.g., 'quiz_history')
+            include_embeddings: Whether to include embedding columns (default: True)
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        from gradeschoolmathsolver.config import Config
+        from .schemas import get_answer_history_schema_for_backend
+
+        config = Config()
+        backend = config.DATABASE_BACKEND
+
+        schema = get_answer_history_schema_for_backend(backend, include_embeddings)
+        return self.create_collection(collection_name, schema)
 
 
 # Global database service instance

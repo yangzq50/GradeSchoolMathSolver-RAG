@@ -9,24 +9,14 @@ This service provides:
 - Graceful degradation when database is unavailable
 
 Embedding Generation:
-The service generates embeddings for configured source columns (e.g., 'question', 'equation')
-and stores them in corresponding embedding columns for vector similarity search.
-
-For MariaDB: Embeddings are stored in separate tables (one per embedding column) because
-MariaDB doesn't support multiple VECTOR indexes on the same table.
+The service delegates embedding generation and storage to the database service.
+The database service handles backend-specific storage (e.g., separate tables for MariaDB).
 """
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from gradeschoolmathsolver.config import Config
 from gradeschoolmathsolver.models import QuizHistory
 from gradeschoolmathsolver.services.database import get_database_service
-from gradeschoolmathsolver.services.database.schemas import (
-    get_answer_history_schema_for_backend,
-    get_embedding_source_mapping,
-    get_embedding_config,
-    get_embedding_table_schemas_mariadb,
-    get_embedding_table_name
-)
 
 
 class QuizHistoryService:
@@ -37,19 +27,14 @@ class QuizHistoryService:
     It gracefully degrades to limited mode when database is unavailable.
 
     Embedding Support:
-    The service automatically generates embeddings for source text columns
-    (configured via EMBEDDING_SOURCE_COLUMNS) when adding history records.
-    These embeddings enable vector similarity search for RAG.
-
-    For MariaDB, embeddings are stored in separate tables (one per embedding column)
-    because MariaDB doesn't support multiple VECTOR indexes on the same table.
+    The service provides source text data to the database service, which handles
+    embedding generation and storage appropriately for the backend.
 
     Attributes:
         config: Configuration object
         index_name: Name of the database index
         db: DatabaseService instance for data operations
         embedding_service: EmbeddingService for generating vector embeddings
-        source_to_embedding_map: Mapping from source columns to embedding columns
     """
 
     def __init__(self):
@@ -57,7 +42,6 @@ class QuizHistoryService:
         self.index_name = self.config.ELASTICSEARCH_INDEX
         self.db = get_database_service()
         self.embedding_service = None
-        self.source_to_embedding_map = get_embedding_source_mapping()
         self._create_index()
 
     def _get_embedding_service(self):
@@ -81,44 +65,22 @@ class QuizHistoryService:
         """
         Create database index with appropriate mappings including embedding columns
 
-        Uses the centralized schema definition from schemas.py which includes
-        both standard fields and embedding columns for vector search.
-
-        For MariaDB: Creates separate tables for each embedding column because
-        MariaDB doesn't support multiple VECTOR indexes on the same table.
+        Uses the centralized database service to create the collection with
+        appropriate embedding support based on the backend.
         """
-        # Get the full schema with embeddings for the configured backend
-        schema = get_answer_history_schema_for_backend(
-            self.config.DATABASE_BACKEND,
-            include_embeddings=True
-        )
-
-        # Create the main collection
-        self.db.create_collection(self.index_name, schema)
-
-        # For MariaDB, also create separate embedding tables
-        if self.config.DATABASE_BACKEND == 'mariadb':
-            embedding_config = get_embedding_config()
-            embedding_tables = get_embedding_table_schemas_mariadb(
-                self.index_name,
-                embedding_config
-            )
-            for table_name, table_schema in embedding_tables.items():
-                self.db.create_collection(table_name, table_schema)
+        # Use database service to create quiz history collection with embeddings
+        self.db.create_quiz_history_collection(self.index_name, include_embeddings=True)
 
     def add_history(self, history: QuizHistory) -> bool:
         """
         Add a quiz history record to database with vector embeddings
 
-        This method generates embeddings from configured source text columns
-        (e.g., 'question' and 'equation') and stores them in the corresponding
-        embedding columns for vector similarity search.
+        This method provides source text data to the database service, which
+        handles embedding generation and storage appropriately for the backend.
 
         The source-to-embedding mapping is configured via:
         - EMBEDDING_SOURCE_COLUMNS: Source text columns (default: 'question,equation')
         - EMBEDDING_COLUMN_NAMES: Embedding columns (default: 'question_embedding,equation_embedding')
-
-        For MariaDB: Embeddings are stored in separate tables (one per embedding column).
 
         Args:
             history: QuizHistory object to store
@@ -130,7 +92,7 @@ class QuizHistoryService:
             return False
 
         try:
-            # Build the base document
+            # Build the base document (without embeddings)
             doc: Dict[str, Any] = {
                 "username": history.username,
                 "question": history.question,
@@ -144,110 +106,40 @@ class QuizHistoryService:
                 "reviewed": False  # Default value for new records
             }
 
-            # Generate embeddings
-            embeddings = self._generate_embeddings(history)
+            # Prepare source texts for embedding generation
+            source_texts = {
+                'question': history.question,
+                'equation': history.user_equation,
+            }
 
-            if self.config.DATABASE_BACKEND == 'mariadb':
-                # For MariaDB: Insert main record first, then embeddings in separate tables
-                doc_id = self.db.insert_record(self.index_name, doc)
-                if doc_id is None:
-                    return False
+            # Get embedding service
+            embedding_service = self._get_embedding_service()
+            if embedding_service is None:
+                raise RuntimeError(
+                    "Embedding service is unavailable. Cannot add quiz history without authentic embeddings. "
+                    "Please ensure the embedding service is running and accessible."
+                )
 
-                # Insert embeddings into separate tables
-                for embedding_col, embedding in embeddings.items():
-                    table_name = get_embedding_table_name(self.index_name, embedding_col)
-                    embedding_doc = {
-                        "record_id": doc_id,
-                        "embedding": embedding
-                    }
-                    self.db.insert_record(table_name, embedding_doc)
-            else:
-                # For Elasticsearch: Add embeddings to main document
-                doc.update(embeddings)
-                doc_id = self.db.insert_record(self.index_name, doc)
+            # Create embedding generator function
+            def generate_embedding(text: str) -> Optional[List[float]]:
+                try:
+                    embedding = embedding_service.generate_embedding(text)
+                    return list(embedding) if embedding is not None else None
+                except Exception as e:
+                    raise RuntimeError(f"Embedding generation failed: {e}") from e
+
+            # Use database service to insert with embeddings
+            doc_id = self.db.insert_record_with_embeddings(
+                self.index_name,
+                doc,
+                source_texts,
+                generate_embedding
+            )
 
             return doc_id is not None
         except Exception as e:
             print(f"Error adding history: {e}")
             return False
-
-    def _generate_embeddings(self, history: QuizHistory) -> Dict[str, List[float]]:
-        """
-        Generate embeddings for all configured source columns.
-
-        Args:
-            history: QuizHistory object containing source text data
-
-        Returns:
-            Dict mapping embedding column name to embedding vector
-
-        Raises:
-            RuntimeError: If embedding service is unavailable or embedding generation fails.
-        """
-        embedding_service = self._get_embedding_service()
-        if embedding_service is None:
-            raise RuntimeError(
-                "Embedding service is unavailable. Cannot add quiz history without authentic embeddings. "
-                "Please ensure the embedding service is running and accessible."
-            )
-
-        # Map source column names to their values from the history object
-        source_values = {
-            'question': history.question,
-            'equation': history.user_equation,
-        }
-
-        embeddings = {}
-        for source_col, embedding_col in self.source_to_embedding_map.items():
-            source_text = source_values.get(source_col, '')
-            if not source_text:
-                raise RuntimeError(
-                    f"Cannot generate embedding for column '{embedding_col}': "
-                    f"source column '{source_col}' is empty or not found."
-                )
-
-            embedding = self._generate_single_embedding(embedding_service, source_col, embedding_col, source_text)
-            embeddings[embedding_col] = embedding
-
-        return embeddings
-
-    def _generate_single_embedding(
-        self,
-        embedding_service: Any,
-        source_col: str,
-        embedding_col: str,
-        source_text: str
-    ) -> List[float]:
-        """
-        Generate a single embedding for a source text.
-
-        Args:
-            embedding_service: The embedding service instance
-            source_col: Name of the source column
-            embedding_col: Name of the embedding column
-            source_text: Text to generate embedding for
-
-        Returns:
-            Embedding vector as list of floats
-
-        Raises:
-            RuntimeError: If embedding generation fails
-        """
-        try:
-            embedding = embedding_service.generate_embedding(source_text)
-        except Exception as e:
-            raise RuntimeError(
-                f"Failed to generate embedding for column '{embedding_col}' "
-                f"from source column '{source_col}': {e}"
-            ) from e
-
-        if embedding is None:
-            raise RuntimeError(
-                f"Embedding service returned None for column '{embedding_col}' "
-                f"from source column '{source_col}'."
-            )
-
-        return list(embedding)
 
     def search_relevant_history(self, username: str, question: str,
                                 category: Optional[str] = None,

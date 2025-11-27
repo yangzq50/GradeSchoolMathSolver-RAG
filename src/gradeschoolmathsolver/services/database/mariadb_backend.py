@@ -717,3 +717,126 @@ class MariaDBDatabaseService(DatabaseService):
         except MySQLError as e:
             print(f"Error counting records: {e}")
             return 0
+
+    def insert_record_with_embeddings(
+        self,
+        collection_name: str,
+        record: Dict[str, Any],
+        source_texts: Dict[str, str],
+        embedding_generator: Any,
+        record_id: Optional[str] = None
+    ) -> Optional[str]:
+        """
+        Insert a record with automatically generated embeddings into separate tables.
+
+        For MariaDB, embeddings are stored in separate tables (one per embedding column)
+        because MariaDB doesn't support multiple VECTOR indexes on the same table.
+
+        This method:
+        1. Generates a record_id if not provided
+        2. Inserts the main record into the main table
+        3. Generates embeddings from source texts
+        4. Inserts each embedding into its corresponding embedding table
+
+        Args:
+            collection_name: Name of the main collection/table
+            record: Record data (without embeddings)
+            source_texts: Dict mapping source column name -> text to generate embedding from
+                         Example: {'question': 'What is 5+3?', 'equation': '5+3'}
+            embedding_generator: Function that takes text and returns embedding vector
+            record_id: Optional record ID (auto-generated UUID if not provided)
+
+        Returns:
+            str: Record ID if successful, None otherwise
+
+        Raises:
+            RuntimeError: If embedding generation fails
+        """
+        from .schemas import get_embedding_source_mapping, get_embedding_table_name
+
+        # Generate record_id if not provided
+        if record_id is None:
+            import uuid
+            record_id = str(uuid.uuid4())
+
+        # Insert main record first
+        inserted_id = self.insert_record(collection_name, record, record_id)
+        if inserted_id is None:
+            return None
+
+        # Get source-to-embedding column mapping
+        source_to_embedding = get_embedding_source_mapping()
+
+        # Generate embeddings and insert into separate tables
+        for source_col, embedding_col in source_to_embedding.items():
+            if source_col in source_texts:
+                source_text = source_texts[source_col]
+                if not source_text:
+                    raise RuntimeError(
+                        f"Cannot generate embedding for column '{embedding_col}': "
+                        f"source column '{source_col}' is empty."
+                    )
+
+                # Generate embedding
+                embedding = embedding_generator(source_text)
+                if embedding is None:
+                    raise RuntimeError(
+                        f"Embedding generation failed for column '{embedding_col}' "
+                        f"from source column '{source_col}'."
+                    )
+
+                # Get the embedding table name
+                embedding_table = get_embedding_table_name(collection_name, embedding_col)
+
+                # Insert embedding into separate table
+                embedding_doc = {
+                    "record_id": inserted_id,
+                    "embedding": list(embedding)
+                }
+                result = self.insert_record(embedding_table, embedding_doc, inserted_id)
+                if result is None:
+                    print(f"Warning: Failed to insert embedding into {embedding_table}")
+
+        return inserted_id
+
+    def create_quiz_history_collection(
+        self, collection_name: str, include_embeddings: bool = True
+    ) -> bool:
+        """
+        Create the quiz history collection with embedding support for MariaDB.
+
+        For MariaDB, this creates:
+        1. The main quiz_history table
+        2. Separate embedding tables (one per embedding column) because
+           MariaDB doesn't support multiple VECTOR indexes on the same table.
+
+        Args:
+            collection_name: Name of the collection (e.g., 'quiz_history')
+            include_embeddings: Whether to include embedding columns (default: True)
+
+        Returns:
+            bool: True if all tables created successfully, False otherwise
+        """
+        from .schemas import (
+            get_answer_history_schema_for_backend,
+            get_embedding_config,
+            get_embedding_table_schemas_mariadb
+        )
+
+        # Create main table
+        schema = get_answer_history_schema_for_backend('mariadb', include_embeddings)
+        if not self.create_collection(collection_name, schema):
+            return False
+
+        # Create separate embedding tables
+        if include_embeddings:
+            embedding_config = get_embedding_config()
+            embedding_tables = get_embedding_table_schemas_mariadb(
+                collection_name,
+                embedding_config
+            )
+            for table_name, table_schema in embedding_tables.items():
+                if not self.create_collection(table_name, table_schema):
+                    print(f"Warning: Failed to create embedding table {table_name}")
+
+        return True
