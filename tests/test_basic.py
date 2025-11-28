@@ -8,7 +8,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def test_qa_generation():
+def test_qa_generation() -> None:
     """Test QA generation service"""
     from gradeschoolmathsolver.services.qa_generation import QAGenerationService
 
@@ -32,7 +32,7 @@ def test_qa_generation():
     print("✅ QA Generation: Hard question generated")
 
 
-def test_classification():
+def test_classification() -> None:
     """Test classification service"""
     from gradeschoolmathsolver.services.classification import ClassificationService
 
@@ -49,7 +49,7 @@ def test_classification():
     print("✅ Classification: All equation types classified correctly")
 
 
-def test_account_service():
+def test_account_service() -> None:
     """Test account service"""
     from gradeschoolmathsolver.services.account import AccountService
     import pytest
@@ -79,7 +79,7 @@ def test_account_service():
     print("✅ Account Service: User created and stats calculated")
 
 
-def test_agent_management():
+def test_agent_management() -> None:
     """Test agent management service"""
     from gradeschoolmathsolver.services.agent_management import AgentManagementService
 
@@ -100,7 +100,7 @@ def test_agent_management():
     print("✅ Agent Management: Agents created and retrieved")
 
 
-def test_models():
+def test_models() -> None:
     """Test data models"""
     from gradeschoolmathsolver.models import Question, AgentConfig, UserStats
 
@@ -134,7 +134,7 @@ def test_models():
     print("✅ Models: All models validated")
 
 
-def test_config():
+def test_config() -> None:
     """Test configuration"""
     from gradeschoolmathsolver.config import Config
 
@@ -146,7 +146,7 @@ def test_config():
     print("✅ Config: Configuration loaded successfully")
 
 
-def run_all_tests():
+def run_all_tests() -> bool:
     """Run all tests"""
     print("\n🧪 Running GradeSchoolMathSolver Tests")
     print("=" * 50)

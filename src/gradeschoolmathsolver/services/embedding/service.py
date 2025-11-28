@@ -124,7 +124,7 @@ class EmbeddingService:
         return model_access.is_embedding_service_available()
 
 
-def main():
+def main() -> None:
     """
     Test the embedding service
 
@@ -170,7 +170,9 @@ def main():
     if embeddings and all(e is not None for e in embeddings):
         print(f"✓ Generated {len(embeddings)} embeddings")
         for i, text in enumerate(test_texts):
-            print(f"  {i+1}. '{text}' -> {len(embeddings[i])} dimensions")
+            emb = embeddings[i]
+            if emb is not None:
+                print(f"  {i+1}. '{text}' -> {len(emb)} dimensions")
     else:
         print("✗ Failed to generate batch embeddings")
 

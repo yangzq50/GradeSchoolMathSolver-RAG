@@ -8,7 +8,7 @@ from gradeschoolmathsolver.services.teacher import TeacherService  # noqa: E402
 from gradeschoolmathsolver.config import Config  # noqa: E402
 
 
-def test_teacher_service():
+def test_teacher_service() -> None:
     """Test teacher service feedback generation"""
     service = TeacherService()
 
@@ -33,7 +33,7 @@ def test_teacher_service():
         print("✅ Teacher Service: Service correctly disabled")
 
 
-def test_teacher_service_different_operations():
+def test_teacher_service_different_operations() -> None:
     """Test teacher service with different operation types"""
     service = TeacherService()
 
@@ -62,7 +62,7 @@ def test_teacher_service_different_operations():
     print("✅ Teacher Service: Different operations tested successfully")
 
 
-def test_teacher_service_config():
+def test_teacher_service_config() -> None:
     """Test teacher service configuration"""
     config = Config()
     service = TeacherService()

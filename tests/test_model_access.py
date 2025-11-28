@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from gradeschoolmathsolver import model_access  # noqa: E402
 
 
-def test_generate_text_completion_success():
+def test_generate_text_completion_success() -> None:
     """Test successful text completion generation"""
     mock_response = Mock()
     mock_response.status_code = 200
@@ -37,7 +37,7 @@ def test_generate_text_completion_success():
         assert call_args.kwargs['json']['messages'] == messages
 
 
-def test_generate_text_completion_failure():
+def test_generate_text_completion_failure() -> None:
     """Test text completion generation failure"""
     mock_response = Mock()
     mock_response.status_code = 500
@@ -50,16 +50,16 @@ def test_generate_text_completion_failure():
         assert result is None
 
 
-def test_generate_text_completion_empty_messages():
+def test_generate_text_completion_empty_messages() -> None:
     """Test text completion with empty messages"""
     result = model_access.generate_text_completion([], max_retries=1)
     assert result is None
 
-    result = model_access.generate_text_completion(None, max_retries=1)
+    result = model_access.generate_text_completion(None, max_retries=1)  # type: ignore[arg-type]
     assert result is None
 
 
-def test_generate_embedding_success():
+def test_generate_embedding_success() -> None:
     """Test successful embedding generation"""
     mock_response = Mock()
     mock_response.status_code = 200
@@ -76,7 +76,7 @@ def test_generate_embedding_success():
         assert mock_post.called
 
 
-def test_generate_embedding_failure():
+def test_generate_embedding_failure() -> None:
     """Test embedding generation failure"""
     mock_response = Mock()
     mock_response.status_code = 500
@@ -88,16 +88,16 @@ def test_generate_embedding_failure():
         assert result is None
 
 
-def test_generate_embedding_empty_text():
+def test_generate_embedding_empty_text() -> None:
     """Test embedding generation with empty text"""
     result = model_access.generate_embedding("", max_retries=1)
     assert result is None
 
-    result = model_access.generate_embedding(None, max_retries=1)
+    result = model_access.generate_embedding(None, max_retries=1)  # type: ignore[arg-type]
     assert result is None
 
 
-def test_generate_embeddings_batch_success():
+def test_generate_embeddings_batch_success() -> None:
     """Test successful batch embedding generation"""
     mock_response = Mock()
     mock_response.status_code = 200
@@ -120,7 +120,7 @@ def test_generate_embeddings_batch_success():
         assert mock_post.called
 
 
-def test_generate_embeddings_batch_with_empty_texts():
+def test_generate_embeddings_batch_with_empty_texts() -> None:
     """Test batch embedding with some empty texts"""
     mock_response = Mock()
     mock_response.status_code = 200
@@ -141,7 +141,7 @@ def test_generate_embeddings_batch_with_empty_texts():
         assert result[2] == [0.5, 0.6]
 
 
-def test_generate_embeddings_batch_all_empty():
+def test_generate_embeddings_batch_all_empty() -> None:
     """Test batch embedding with all empty texts"""
     texts = ["", "", ""]
     result = model_access.generate_embeddings_batch(texts, max_retries=1)
@@ -150,16 +150,16 @@ def test_generate_embeddings_batch_all_empty():
     assert all(r is None for r in result)
 
 
-def test_generate_embeddings_batch_empty_list():
+def test_generate_embeddings_batch_empty_list() -> None:
     """Test batch embedding with empty list"""
     result = model_access.generate_embeddings_batch([], max_retries=1)
     assert result == []
 
-    result = model_access.generate_embeddings_batch(None, max_retries=1)
+    result = model_access.generate_embeddings_batch(None, max_retries=1)  # type: ignore[arg-type]
     assert result == []
 
 
-def test_is_embedding_service_available_success():
+def test_is_embedding_service_available_success() -> None:
     """Test embedding service availability check when service is available"""
     mock_response = Mock()
     mock_response.status_code = 200
@@ -172,14 +172,14 @@ def test_is_embedding_service_available_success():
         assert result is True
 
 
-def test_is_embedding_service_available_failure():
+def test_is_embedding_service_available_failure() -> None:
     """Test embedding service availability check when service is unavailable"""
     with patch('requests.post', side_effect=Exception("Connection error")):
         result = model_access.is_embedding_service_available()
         assert result is False
 
 
-def test_is_generation_service_available_success():
+def test_is_generation_service_available_success() -> None:
     """Test generation service availability check when service is available"""
     mock_response = Mock()
     mock_response.status_code = 200
@@ -192,14 +192,14 @@ def test_is_generation_service_available_success():
         assert result is True
 
 
-def test_is_generation_service_available_failure():
+def test_is_generation_service_available_failure() -> None:
     """Test generation service availability check when service is unavailable"""
     with patch('requests.post', side_effect=Exception("Connection error")):
         result = model_access.is_generation_service_available()
         assert result is False
 
 
-def test_retry_logic():
+def test_retry_logic() -> None:
     """Test that retry logic works correctly"""
     # Mock a failing then succeeding scenario
     mock_responses = [
@@ -216,7 +216,7 @@ def test_retry_logic():
         assert mock_post.call_count == 3  # Called 3 times before success
 
 
-def test_config_integration():
+def test_config_integration() -> None:
     """Test that model_access uses Config correctly"""
     from gradeschoolmathsolver.config import Config
 
@@ -232,7 +232,7 @@ def test_config_integration():
     assert config.EMBEDDING_MODEL_NAME is not None
 
 
-def test_model_access_with_custom_config():
+def test_model_access_with_custom_config() -> None:
     """Test model_access with custom configuration
 
     Note: This test uses importlib.reload() to pick up environment changes.

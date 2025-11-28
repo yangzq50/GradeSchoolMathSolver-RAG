@@ -4,7 +4,7 @@ Manages reviewing past mistakes for users
 """
 import sys
 import os
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 # Add parent directory to path for imports
@@ -17,10 +17,10 @@ from gradeschoolmathsolver.models import MistakeReview  # noqa: E402
 class MistakeReviewService:
     """Service for reviewing past mistakes"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.account_service = AccountService()
 
-    def _build_filters_from_query(self, query):
+    def _build_filters_from_query(self, query: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """Convert Elasticsearch-style query to simple filters for MariaDB compatibility"""
         if not query or 'bool' not in query:
             return None

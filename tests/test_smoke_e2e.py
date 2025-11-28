@@ -4,6 +4,7 @@ Tests the full flow from question generation to result processing with mocked de
 """
 import sys
 import os
+from typing import Any
 from unittest.mock import MagicMock, patch
 import pytest
 
@@ -29,7 +30,7 @@ def test_full_exam_flow_with_mocked_external_services(  # noqa: C901
 
     # Reset database service to pick up elasticsearch backend
     from gradeschoolmathsolver.services.database.service import set_database_service
-    set_database_service(None)
+    set_database_service(None)  # type: ignore[arg-type]
 
     # Mock the embedding service to return proper embeddings
     mock_embedding_service = MagicMock()
@@ -57,7 +58,7 @@ def test_full_exam_flow_with_mocked_external_services(  # noqa: C901
     mock_es_instance.create.side_effect = mock_create
 
     # Mock get to raise NotFoundError for non-existent users, return user if created
-    def mock_get(index: str, id: str, **kwargs) -> dict:  # type: ignore[type-arg]
+    def mock_get(index: str, id: str, **kwargs: Any) -> dict[str, Any]:
         if index == "users":
             if id not in created_users:
                 # Create a mock NotFoundError - avoid type issues with ApiResponseMeta
@@ -149,7 +150,7 @@ def test_full_exam_flow_with_mocked_external_services(  # noqa: C901
     ]
 
     # Step 3: Process exam results
-    results = service.process_human_exam(request, questions, user_answers)
+    results = service.process_human_exam(request, questions, user_answers)  # type: ignore[arg-type]
 
     # Verify results
     assert results is not None, "Results should be returned"
@@ -179,7 +180,7 @@ def test_full_exam_flow_with_mocked_external_services(  # noqa: C901
 
 @patch.dict(os.environ, {'DATABASE_BACKEND': 'elasticsearch'})
 @patch('gradeschoolmathsolver.services.database.elasticsearch_backend.Elasticsearch')
-def test_exam_flow_without_ai_model(mock_elasticsearch):
+def test_exam_flow_without_ai_model(mock_elasticsearch) -> None:
     """
     Test that exam flow works even when AI model is unavailable
     (should fall back to using equation as question text)
@@ -191,7 +192,7 @@ def test_exam_flow_without_ai_model(mock_elasticsearch):
 
     # Reset database service to pick up elasticsearch backend
     from gradeschoolmathsolver.services.database.service import set_database_service
-    set_database_service(None)
+    set_database_service(None)  # type: ignore[arg-type]
 
     from gradeschoolmathsolver.services.exam import ExamService
     from gradeschoolmathsolver.models import ExamRequest
@@ -220,7 +221,7 @@ def test_exam_flow_without_ai_model(mock_elasticsearch):
 
     # Process answers
     answers = [q.answer for q in questions]
-    results = service.process_human_exam(request, questions, answers)
+    results = service.process_human_exam(request, questions, answers)  # type: ignore[arg-type]
 
     assert results["correct_answers"] == 2
     assert results["score"] == 100.0
@@ -230,7 +231,7 @@ def test_exam_flow_without_ai_model(mock_elasticsearch):
 
 @patch.dict(os.environ, {'DATABASE_BACKEND': 'elasticsearch'})
 @patch('gradeschoolmathsolver.services.database.elasticsearch_backend.Elasticsearch')
-def test_exam_flow_without_elasticsearch(mock_elasticsearch):
+def test_exam_flow_without_elasticsearch(mock_elasticsearch) -> None:
     """
     Test that exam flow works when Elasticsearch is unavailable
     (should gracefully degrade, skipping RAG features)
@@ -242,7 +243,7 @@ def test_exam_flow_without_elasticsearch(mock_elasticsearch):
 
     # Reset database service to pick up elasticsearch backend
     from gradeschoolmathsolver.services.database.service import set_database_service
-    set_database_service(None)
+    set_database_service(None)  # type: ignore[arg-type]
 
     from gradeschoolmathsolver.services.exam import ExamService
     from gradeschoolmathsolver.models import ExamRequest
@@ -266,7 +267,7 @@ def test_exam_flow_without_elasticsearch(mock_elasticsearch):
 
     # Process answers
     answers = [q.answer for q in questions]
-    results = service.process_human_exam(request, questions, answers)
+    results = service.process_human_exam(request, questions, answers)  # type: ignore[arg-type]
 
     assert results["correct_answers"] == 2
 
@@ -276,7 +277,7 @@ def test_exam_flow_without_elasticsearch(mock_elasticsearch):
 @patch.dict(os.environ, {'DATABASE_BACKEND': 'elasticsearch'})
 @patch('gradeschoolmathsolver.services.database.elasticsearch_backend.Elasticsearch')
 @patch('gradeschoolmathsolver.model_access.requests.post')
-def test_classification_integration(mock_requests_post, mock_elasticsearch):
+def test_classification_integration(mock_requests_post, mock_elasticsearch) -> None:
     """
     Test that question classification works in the full flow
     """
@@ -287,7 +288,7 @@ def test_classification_integration(mock_requests_post, mock_elasticsearch):
 
     # Reset database service to pick up elasticsearch backend
     from gradeschoolmathsolver.services.database.service import set_database_service
-    set_database_service(None)
+    set_database_service(None)  # type: ignore[arg-type]
 
     from gradeschoolmathsolver.services.exam import ExamService
     from gradeschoolmathsolver.models import ExamRequest

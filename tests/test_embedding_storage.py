@@ -15,31 +15,31 @@ import pytest
 class TestEmbeddingConfigDefaults:
     """Test default embedding configuration values"""
 
-    def test_embedding_column_count_default(self):
+    def test_embedding_column_count_default(self) -> None:
         """Test that EMBEDDING_COLUMN_COUNT defaults to 2"""
         from gradeschoolmathsolver.config import Config
         config = Config()
         assert config.EMBEDDING_COLUMN_COUNT == 2
 
-    def test_embedding_dimensions_default(self):
+    def test_embedding_dimensions_default(self) -> None:
         """Test that EMBEDDING_DIMENSIONS defaults to [768]"""
         from gradeschoolmathsolver.config import Config
         config = Config()
         assert config.EMBEDDING_DIMENSIONS == [768]
 
-    def test_elasticsearch_vector_similarity_default(self):
+    def test_elasticsearch_vector_similarity_default(self) -> None:
         """Test that ELASTICSEARCH_VECTOR_SIMILARITY defaults to 'cosine'"""
         from gradeschoolmathsolver.config import Config
         config = Config()
         assert config.ELASTICSEARCH_VECTOR_SIMILARITY == 'cosine'
 
-    def test_embedding_column_names_default(self):
+    def test_embedding_column_names_default(self) -> None:
         """Test that EMBEDDING_COLUMN_NAMES defaults to ['question_embedding', 'equation_embedding']"""
         from gradeschoolmathsolver.config import Config
         config = Config()
         assert config.EMBEDDING_COLUMN_NAMES == ['question_embedding', 'equation_embedding']
 
-    def test_embedding_source_columns_default(self):
+    def test_embedding_source_columns_default(self) -> None:
         """Test that EMBEDDING_SOURCE_COLUMNS defaults to ['question', 'equation']"""
         from gradeschoolmathsolver.config import Config
         config = Config()
@@ -49,7 +49,7 @@ class TestEmbeddingConfigDefaults:
 class TestEmbeddingConfigOverrides:
     """Test environment variable overrides for embedding configuration"""
 
-    def test_embedding_column_count_override(self):
+    def test_embedding_column_count_override(self) -> None:
         """Test that EMBEDDING_COLUMN_COUNT can be overridden via env var"""
         env_vars = {'EMBEDDING_COLUMN_COUNT': '3'}
 
@@ -61,7 +61,7 @@ class TestEmbeddingConfigOverrides:
             config = Config()
             assert config.EMBEDDING_COLUMN_COUNT == 3
 
-    def test_embedding_dimensions_single_override(self):
+    def test_embedding_dimensions_single_override(self) -> None:
         """Test that EMBEDDING_DIMENSIONS can be overridden with single value"""
         env_vars = {'EMBEDDING_DIMENSIONS': '1024'}
 
@@ -73,7 +73,7 @@ class TestEmbeddingConfigOverrides:
             config = Config()
             assert config.EMBEDDING_DIMENSIONS == [1024]
 
-    def test_embedding_dimensions_multiple_override(self):
+    def test_embedding_dimensions_multiple_override(self) -> None:
         """Test that EMBEDDING_DIMENSIONS can be overridden with multiple values"""
         env_vars = {'EMBEDDING_DIMENSIONS': '768, 512, 256'}
 
@@ -85,7 +85,7 @@ class TestEmbeddingConfigOverrides:
             config = Config()
             assert config.EMBEDDING_DIMENSIONS == [768, 512, 256]
 
-    def test_elasticsearch_vector_similarity_override(self):
+    def test_elasticsearch_vector_similarity_override(self) -> None:
         """Test that ELASTICSEARCH_VECTOR_SIMILARITY can be overridden"""
         env_vars = {'ELASTICSEARCH_VECTOR_SIMILARITY': 'dot_product'}
 
@@ -97,7 +97,7 @@ class TestEmbeddingConfigOverrides:
             config = Config()
             assert config.ELASTICSEARCH_VECTOR_SIMILARITY == 'dot_product'
 
-    def test_embedding_column_names_override(self):
+    def test_embedding_column_names_override(self) -> None:
         """Test that EMBEDDING_COLUMN_NAMES can be overridden via env var"""
         env_vars = {'EMBEDDING_COLUMN_NAMES': 'custom_emb_1, custom_emb_2, custom_emb_3'}
 
@@ -109,7 +109,7 @@ class TestEmbeddingConfigOverrides:
             config = Config()
             assert config.EMBEDDING_COLUMN_NAMES == ['custom_emb_1', 'custom_emb_2', 'custom_emb_3']
 
-    def test_embedding_source_columns_override(self):
+    def test_embedding_source_columns_override(self) -> None:
         """Test that EMBEDDING_SOURCE_COLUMNS can be overridden via env var"""
         env_vars = {'EMBEDDING_SOURCE_COLUMNS': 'title, description, content'}
 
@@ -125,7 +125,7 @@ class TestEmbeddingConfigOverrides:
 class TestEmbeddingSchemaHelpers:
     """Test embedding schema helper functions"""
 
-    def test_get_embedding_config_default(self):
+    def test_get_embedding_config_default(self) -> None:
         """Test get_embedding_config returns correct default values"""
         # Reset environment to ensure defaults are used
         env_vars_to_clear = [
@@ -162,7 +162,7 @@ class TestEmbeddingSchemaHelpers:
                 elif key in os.environ:
                     del os.environ[key]
 
-    def test_get_embedding_config_extends_dimensions(self):
+    def test_get_embedding_config_extends_dimensions(self) -> None:
         """Test that get_embedding_config extends dimensions list when needed"""
         env_vars = {
             'EMBEDDING_COLUMN_COUNT': '4',
@@ -189,7 +189,7 @@ class TestEmbeddingSchemaHelpers:
             assert config['dimensions'][2] == 512
             assert config['dimensions'][3] == 512
 
-    def test_get_embedding_config_generates_column_names(self):
+    def test_get_embedding_config_generates_column_names(self) -> None:
         """Test that get_embedding_config generates column names for extra columns"""
         env_vars = {'EMBEDDING_COLUMN_COUNT': '4'}
 
@@ -209,7 +209,7 @@ class TestEmbeddingSchemaHelpers:
             assert config['column_names'][2] == 'embedding_2'
             assert config['column_names'][3] == 'embedding_3'
 
-    def test_get_embedding_config_includes_source_columns(self):
+    def test_get_embedding_config_includes_source_columns(self) -> None:
         """Test that get_embedding_config includes source_columns"""
         # Clean up environment to ensure defaults
         env_vars_to_clear = [
@@ -242,7 +242,7 @@ class TestEmbeddingSchemaHelpers:
                 elif key in os.environ:
                     del os.environ[key]
 
-    def test_get_embedding_config_extends_source_columns(self):
+    def test_get_embedding_config_extends_source_columns(self) -> None:
         """Test that get_embedding_config extends source columns when needed"""
         env_vars = {'EMBEDDING_COLUMN_COUNT': '4'}
 
@@ -266,7 +266,7 @@ class TestEmbeddingSchemaHelpers:
 class TestEmbeddingSourceMapping:
     """Test embedding source to column mapping functions"""
 
-    def test_get_embedding_source_mapping_default(self):
+    def test_get_embedding_source_mapping_default(self) -> None:
         """Test that get_embedding_source_mapping returns correct default mapping"""
         # Clean up environment to ensure defaults
         env_vars_to_clear = [
@@ -301,7 +301,7 @@ class TestEmbeddingSourceMapping:
                 elif key in os.environ:
                     del os.environ[key]
 
-    def test_get_embedding_source_mapping_custom(self):
+    def test_get_embedding_source_mapping_custom(self) -> None:
         """Test that get_embedding_source_mapping respects custom config"""
         env_vars = {
             'EMBEDDING_SOURCE_COLUMNS': 'title,body',
@@ -323,7 +323,7 @@ class TestEmbeddingSourceMapping:
                 'body': 'body_embedding'
             }
 
-    def test_validate_embedding_config_valid(self):
+    def test_validate_embedding_config_valid(self) -> None:
         """Test that validate_embedding_config returns True for valid config"""
         # Clean up environment to ensure defaults
         env_vars_to_clear = [
@@ -358,7 +358,7 @@ class TestEmbeddingSourceMapping:
                 elif key in os.environ:
                     del os.environ[key]
 
-    def test_validate_embedding_config_invalid_source_column(self):
+    def test_validate_embedding_config_invalid_source_column(self) -> None:
         """Test that validate_embedding_config raises ValueError for invalid source columns"""
         env_vars = {'EMBEDDING_SOURCE_COLUMNS': 'invalid_column,equation'}
 
@@ -377,7 +377,7 @@ class TestEmbeddingSourceMapping:
             with pytest.raises(ValueError, match="does not exist in database schema"):
                 validate_embedding_config(valid_columns)
 
-    def test_validate_embedding_config_custom_valid_columns(self):
+    def test_validate_embedding_config_custom_valid_columns(self) -> None:
         """Test that validate_embedding_config accepts custom valid source columns"""
         # Clean up environment to ensure defaults
         env_vars_to_clear = [
@@ -408,7 +408,7 @@ class TestEmbeddingSourceMapping:
                 elif key in os.environ:
                     del os.environ[key]
 
-    def test_get_answer_history_text_columns(self):
+    def test_get_answer_history_text_columns(self) -> None:
         """Test that get_answer_history_text_columns returns text columns from schema"""
         from gradeschoolmathsolver.services.database.schemas import get_answer_history_text_columns
 
@@ -425,7 +425,7 @@ class TestEmbeddingSourceMapping:
 class TestElasticsearchEmbeddingSchema:
     """Test Elasticsearch schema generation with embeddings"""
 
-    def test_elasticsearch_embedding_fields_generation(self):
+    def test_elasticsearch_embedding_fields_generation(self) -> None:
         """Test that embedding fields are generated correctly for Elasticsearch"""
         from gradeschoolmathsolver.services.database.schemas import get_embedding_fields_elasticsearch
 
@@ -447,7 +447,7 @@ class TestElasticsearchEmbeddingSchema:
         assert fields['equation_embedding']['dims'] == 512
         assert fields['equation_embedding']['similarity'] == 'cosine'
 
-    def test_elasticsearch_embedding_fields_empty_dimensions(self):
+    def test_elasticsearch_embedding_fields_empty_dimensions(self) -> None:
         """Test that embedding fields raise ValueError when dimensions list is empty"""
         from gradeschoolmathsolver.services.database.schemas import get_embedding_fields_elasticsearch
         import pytest
@@ -459,7 +459,7 @@ class TestElasticsearchEmbeddingSchema:
                 similarity='cosine'
             )
 
-    def test_elasticsearch_schema_includes_embeddings(self):
+    def test_elasticsearch_schema_includes_embeddings(self) -> None:
         """Test that answer history schema includes embedding fields for Elasticsearch"""
         # Clean up environment to ensure defaults
         env_vars_to_clear = [
@@ -504,7 +504,7 @@ class TestElasticsearchEmbeddingSchema:
                 elif key in os.environ:
                     del os.environ[key]
 
-    def test_elasticsearch_schema_without_embeddings(self):
+    def test_elasticsearch_schema_without_embeddings(self) -> None:
         """Test that embeddings can be excluded from Elasticsearch schema"""
         from gradeschoolmathsolver.services.database.schemas import get_answer_history_schema_for_backend
 
@@ -524,7 +524,7 @@ class TestElasticsearchEmbeddingSchema:
 class TestMariaDBEmbeddingSchema:
     """Test MariaDB schema generation with embeddings"""
 
-    def test_mariadb_embedding_columns_generation(self):
+    def test_mariadb_embedding_columns_generation(self) -> None:
         """Test that embedding columns are generated correctly for MariaDB"""
         from gradeschoolmathsolver.services.database.schemas import get_embedding_columns_mariadb
 
@@ -540,7 +540,7 @@ class TestMariaDBEmbeddingSchema:
         assert columns['question_embedding'] == 'VECTOR(768) NOT NULL'
         assert columns['equation_embedding'] == 'VECTOR(512) NOT NULL'
 
-    def test_mariadb_embedding_columns_empty_dimensions(self):
+    def test_mariadb_embedding_columns_empty_dimensions(self) -> None:
         """Test that embedding columns raise ValueError when dimensions list is empty"""
         from gradeschoolmathsolver.services.database.schemas import get_embedding_columns_mariadb
         import pytest
@@ -551,7 +551,7 @@ class TestMariaDBEmbeddingSchema:
                 dimensions=[]
             )
 
-    def test_mariadb_embedding_indexes_generation(self):
+    def test_mariadb_embedding_indexes_generation(self) -> None:
         """Test that vector indexes return empty list (indexes are in separate tables)"""
         from gradeschoolmathsolver.services.database.schemas import get_embedding_indexes_mariadb
 
@@ -563,7 +563,7 @@ class TestMariaDBEmbeddingSchema:
         # Each embedding column gets its own table with its own index
         assert len(indexes) == 0
 
-    def test_mariadb_embedding_table_schemas(self):
+    def test_mariadb_embedding_table_schemas(self) -> None:
         """Test that separate embedding tables are generated for MariaDB"""
         from gradeschoolmathsolver.services.database.schemas import get_embedding_table_schemas_mariadb
 
@@ -592,7 +592,7 @@ class TestMariaDBEmbeddingSchema:
             assert len(indexes) == 1
             assert 'VECTOR INDEX idx_embedding (embedding)' in indexes
 
-    def test_mariadb_schema_excludes_embeddings_in_main_table(self):
+    def test_mariadb_schema_excludes_embeddings_in_main_table(self) -> None:
         """Test that answer history schema excludes embedding columns for MariaDB"""
         # Clean up environment to ensure defaults
         env_vars_to_clear = [
@@ -638,7 +638,7 @@ class TestMariaDBEmbeddingSchema:
                 elif key in os.environ:
                     del os.environ[key]
 
-    def test_mariadb_schema_without_embeddings(self):
+    def test_mariadb_schema_without_embeddings(self) -> None:
         """Test that embeddings can be excluded from MariaDB schema"""
         from gradeschoolmathsolver.services.database.schemas import get_answer_history_schema_for_backend
 
@@ -663,7 +663,7 @@ class TestMariaDBEmbeddingSchema:
 class TestBackwardsCompatibility:
     """Test backwards compatibility with existing Q&A features"""
 
-    def test_user_schema_unchanged(self):
+    def test_user_schema_unchanged(self) -> None:
         """Test that user schema is not affected by embedding changes"""
         from gradeschoolmathsolver.services.database.schemas import get_user_schema_for_backend
 
@@ -681,7 +681,7 @@ class TestBackwardsCompatibility:
         assert 'created_at' in maria_schema['columns']
         assert 'question_embedding' not in maria_schema['columns']
 
-    def test_answer_history_core_fields_preserved(self):
+    def test_answer_history_core_fields_preserved(self) -> None:
         """Test that core answer history fields are preserved"""
         from gradeschoolmathsolver.services.database.schemas import get_answer_history_schema_for_backend
 
@@ -713,7 +713,7 @@ class TestBackwardsCompatibility:
                 assert 'timestamp' in cols
                 assert 'reviewed' in cols
 
-    def test_answer_history_indexes_preserved(self):
+    def test_answer_history_indexes_preserved(self) -> None:
         """Test that MariaDB indexes are preserved"""
         from gradeschoolmathsolver.services.database.schemas import get_answer_history_schema_for_backend
 
@@ -730,7 +730,7 @@ class TestVectorSimilarityOptions:
     """Test different vector similarity options for Elasticsearch"""
 
     @pytest.mark.parametrize("similarity", ['cosine', 'dot_product', 'l2_norm'])
-    def test_elasticsearch_similarity_options(self, similarity):
+    def test_elasticsearch_similarity_options(self, similarity) -> None:
         """Test that all Elasticsearch similarity options work"""
         from gradeschoolmathsolver.services.database.schemas import get_embedding_fields_elasticsearch
 

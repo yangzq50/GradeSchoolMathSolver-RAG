@@ -181,12 +181,12 @@ This will install the latest stable release with all dependencies.
    pip install .
    ```
    
-   **Install in development mode**
+   **Install in development mode (includes dev dependencies)**
    ```bash
-   pip install -e .
+   pip install -e .[dev]
    ```
    
-   This will install all dependencies automatically and make the `gradeschoolmathsolver` command available.
+   This will install all dependencies automatically and make the `gradeschoolmathsolver` command available. The `[dev]` extra includes testing tools like pytest, flake8, and mypy.
 
 3. **Set up environment variables**
    ```bash
@@ -611,13 +611,14 @@ See [Model Access Documentation](docs/MODEL_ACCESS.md) for detailed configuratio
 
 ### Database Configuration
 
-The system supports two database backends:
+The system supports two database backends, both with full RAG (Retrieval-Augmented Generation) capabilities:
 
 **MariaDB (Default, Recommended)**
 - Lightweight and fast
 - Proper relational structure with typed columns
 - Lower resource usage
 - Easy setup with Docker
+- **Embedding support**: Supports vector embeddings for RAG via separate embedding tables
 - See [MariaDB Integration Documentation](docs/MARIADB_INTEGRATION.md)
 
 ```bash
@@ -629,11 +630,12 @@ MARIADB_PASSWORD=math_solver_password
 MARIADB_DATABASE=math_solver
 ```
 
-**Elasticsearch (Optional, for RAG)**
-- Advanced full-text search
-- Semantic similarity matching
-- Best for RAG features
-- Requires more resources
+**Elasticsearch (Optional, for Advanced RAG)**
+- Advanced full-text search capabilities
+- Native vector similarity search (dense_vector fields)
+- Semantic similarity matching out of the box
+- Best for large-scale RAG deployments
+- Requires more resources (8GB+ RAM recommended)
 - See [Elasticsearch Storage Documentation](docs/ELASTICSEARCH_STORAGE.md)
 
 ```bash
@@ -642,6 +644,8 @@ ELASTICSEARCH_HOST=localhost
 ELASTICSEARCH_PORT=9200
 ELASTICSEARCH_INDEX=quiz_history
 ```
+
+**Note**: Both backends support the embedding service for RAG functionality. MariaDB stores embeddings in separate tables with indexed vector columns, while Elasticsearch uses native `dense_vector` fields for efficient similarity search.
 
 ### Teacher Service Configuration
 
@@ -736,22 +740,44 @@ GradeSchoolMathSolver/
 
 ## 🐛 Troubleshooting
 
-### Module Import Errors
+### Recommended Installation Methods
 
-The project is now a proper Python package. If you encounter import errors:
+For the best experience, install GradeSchoolMathSolver using one of these methods:
 
-1. **Make sure the package is installed**
+1. **Docker (Recommended for Production)**
    ```bash
-   cd GradeSchoolMathSolver
-   pip install -e .
+   docker-compose up -d
    ```
 
-2. **Run using the package command**
+2. **PyPI (Recommended for Users)**
+   ```bash
+   pip install gradeschoolmathsolver
+   ```
+
+Avoid installing from source unless you are actively developing the project, as it requires additional setup and dependencies.
+
+### Module Import Errors
+
+If you encounter import errors:
+
+1. **Verify the package is installed**
+   ```bash
+   pip show gradeschoolmathsolver
+   ```
+
+2. **Reinstall the package**
+   ```bash
+   pip install --upgrade gradeschoolmathsolver
+   # Or if using Docker, rebuild the container
+   docker-compose build --no-cache
+   ```
+
+3. **Run using the package command**
    ```bash
    gradeschoolmathsolver
    ```
 
-3. **Or run as a module**
+4. **Or run as a module**
    ```bash
    python -m gradeschoolmathsolver.web_ui.app
    ```
@@ -960,6 +986,7 @@ For questions or support, please open an issue on GitHub.
 - Docker Model Runner for local AI model hosting
 - Ollama for alternative AI model deployment
 - LLaMA 3.2 for language generation
+- EmbeddingGemma for text embedding and semantic search
 - MariaDB for reliable database storage
 - Elasticsearch for advanced RAG capabilities
 - Flask for web framework

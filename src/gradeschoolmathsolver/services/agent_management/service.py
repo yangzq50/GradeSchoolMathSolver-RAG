@@ -15,7 +15,7 @@ class AgentManagementService:
         self.config_dir = config_dir
         self._ensure_directory()
 
-    def _ensure_directory(self):
+    def _ensure_directory(self) -> None:
         """Ensure the configuration directory exists"""
         if not os.path.exists(self.config_dir):
             os.makedirs(self.config_dir)
@@ -133,7 +133,7 @@ class AgentManagementService:
             print(f"Error deleting agent: {e}")
             return False
 
-    def create_default_agents(self):
+    def create_default_agents(self) -> None:
         """Create default agent configurations"""
         default_agents = [
             AgentConfig(

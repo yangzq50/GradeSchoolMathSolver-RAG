@@ -30,7 +30,7 @@ Example Usage:
     # Generate batch embeddings
     embeddings = generate_embeddings_batch(["Question 1", "Question 2"])
 """
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 import logging
 import requests
 from requests.exceptions import RequestException, Timeout
@@ -47,7 +47,7 @@ def generate_text_completion(
     messages: List[Dict[str, str]],
     max_retries: int = 3,
     timeout: int = 30,
-    **kwargs
+    **kwargs: Any
 ) -> Optional[str]:
     """
     Generate text completion using the configured LLM service.
@@ -347,7 +347,7 @@ def is_generation_service_available() -> bool:
         return False
 
 
-def main():
+def main() -> None:
     """
     Test the model access module.
 
@@ -406,8 +406,9 @@ def main():
     if embeddings and all(e is not None for e in embeddings):
         print(f"✓ Generated {len(embeddings)} embeddings")
         for i, text in enumerate(test_texts):
-            if embeddings[i]:
-                print(f"  {i+1}. '{text}' -> {len(embeddings[i])} dimensions")
+            emb = embeddings[i]
+            if emb is not None:
+                print(f"  {i+1}. '{text}' -> {len(emb)} dimensions")
     else:
         print("✗ Failed to generate batch embeddings")
 

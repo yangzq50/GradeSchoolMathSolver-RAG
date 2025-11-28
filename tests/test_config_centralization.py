@@ -11,7 +11,7 @@ import importlib
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def test_config_default_values():
+def test_config_default_values() -> None:
     """Test that Config class has sensible defaults"""
     from gradeschoolmathsolver.config import Config
 
@@ -59,7 +59,7 @@ def test_config_default_values():
     print("✅ Config default values are correct")
 
 
-def test_config_environment_variable_override():
+def test_config_environment_variable_override() -> None:
     """Test that environment variables properly override defaults"""
     # Set environment variables
     env_vars = {
@@ -96,7 +96,7 @@ def test_config_environment_variable_override():
         print("✅ Config environment variable overrides work correctly")
 
 
-def test_teacher_service_enabled_default_true():
+def test_teacher_service_enabled_default_true() -> None:
     """Test that TEACHER_SERVICE_ENABLED defaults to True when env var not set"""
     # Ensure env var is not set
     with patch.dict(os.environ, {}, clear=True):
@@ -113,7 +113,7 @@ def test_teacher_service_enabled_default_true():
         print("✅ TEACHER_SERVICE_ENABLED defaults to True")
 
 
-def test_mariadb_backend_uses_config():
+def test_mariadb_backend_uses_config() -> None:
     """Test that MariaDB backend uses Config for retry parameters"""
     import importlib
     from mysql.connector import Error as MySQLError
@@ -143,7 +143,7 @@ def test_mariadb_backend_uses_config():
             print("✅ MariaDB backend correctly uses Config defaults")
 
 
-def test_elasticsearch_backend_uses_config():
+def test_elasticsearch_backend_uses_config() -> None:
     """Test that Elasticsearch backend uses Config for retry parameters"""
     import importlib
     from elasticsearch import ConnectionError as ESConnectionError
@@ -174,12 +174,12 @@ def test_elasticsearch_backend_uses_config():
             print("✅ Elasticsearch backend correctly uses Config defaults")
 
 
-def test_database_service_uses_config():
+def test_database_service_uses_config() -> None:
     """Test that database service selection uses Config"""
     from gradeschoolmathsolver.services.database.service import get_database_service, set_database_service
 
     # Reset the global service
-    set_database_service(None)
+    set_database_service(None)  # type: ignore[arg-type]
 
     with patch.dict(os.environ, {'DATABASE_BACKEND': 'mariadb'}, clear=False):
         # Reload config module
@@ -192,7 +192,7 @@ def test_database_service_uses_config():
 
             with patch('gradeschoolmathsolver.services.database.mariadb_backend.time.sleep'):
                 # Reset again to force re-initialization
-                set_database_service(None)
+                set_database_service(None)  # type: ignore[arg-type]
                 service = get_database_service()
 
                 # Should be MariaDB service
@@ -232,7 +232,7 @@ def _check_file_for_getenv(filepath: Any, violations: list) -> None:
         print(f"Warning: Could not parse {filepath}: {e}")
 
 
-def test_no_direct_os_getenv_outside_config():
+def test_no_direct_os_getenv_outside_config() -> None:
     """Test that no direct os.getenv calls exist outside config.py"""
     from pathlib import Path
 

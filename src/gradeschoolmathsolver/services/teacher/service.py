@@ -11,7 +11,7 @@ from gradeschoolmathsolver import model_access
 class TeacherService:
     """Service for generating educational feedback on wrong answers"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.config = Config()
         self.enabled = self.config.TEACHER_SERVICE_ENABLED
 

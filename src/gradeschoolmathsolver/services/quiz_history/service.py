@@ -44,13 +44,13 @@ class QuizHistoryService:
         db: DatabaseService instance for data operations
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.config = Config()
         self.index_name = self.config.ELASTICSEARCH_INDEX
         self.db = get_database_service()
         self._create_index()
 
-    def _create_index(self):
+    def _create_index(self) -> None:
         """
         Create database index with appropriate mappings including embedding columns
 
