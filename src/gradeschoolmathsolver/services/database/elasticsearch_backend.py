@@ -177,80 +177,88 @@ class ElasticsearchDatabaseService(DatabaseService):
             return False
 
     def insert_record(
-        self, collection_name: str, record: Dict[str, Any],
-        record_id: Optional[str] = None,
-        source_texts: Optional[Dict[str, str]] = None
+        self, collection_name: str, record: Dict[str, Any]
     ) -> Optional[str]:
         """
-        Index a document (record) in Elasticsearch (create or update), with optional embedding generation.
+        Index a document (record) in Elasticsearch (create or update), with automatic embedding generation.
 
-        If source_texts is provided, embeddings will be generated and added to the document.
+        The database service handles all embedding operations internally:
+        - Reads EMBEDDING_SOURCE_COLUMNS from config to determine source text columns
+        - Generates embeddings from source columns in the record
+        - Stores embeddings in the same document
 
         Args:
             collection_name: Name of the index
-            record: Document data
-            record_id: Optional document ID
-            source_texts: Optional dict mapping source column name -> text to embed
-                         Example: {'question': 'What is 5+3?', 'equation': '5+3'}
+            record: Document data (must contain all source columns from config)
 
         Returns:
             str: Document ID if successful, None otherwise
 
         Raises:
-            RuntimeError: If embedding generation fails when source_texts provided
+            RuntimeError: If embedding generation fails
         """
         if not self.es:
             return None
 
         try:
-            # If source_texts provided, generate embeddings and add to record
+            # Generate embeddings and add to record
+            # Read source columns from config - do NOT use any defaults
             record_to_insert = record.copy()
-            if source_texts:
-                self._add_embeddings_to_record(record_to_insert, source_texts)
+            self._add_embeddings_from_record(record_to_insert)
 
-            if record_id:
-                result = self.es.index(index=collection_name, id=record_id, document=record_to_insert)
-            else:
-                result = self.es.index(index=collection_name, document=record_to_insert)
+            result = self.es.index(index=collection_name, document=record_to_insert)
             doc_id = result.get('_id')
             return str(doc_id) if doc_id else None
+        except RuntimeError:
+            # Re-raise RuntimeError from embedding operations
+            raise
         except Exception as e:
             print(f"ERROR: Failed to index document in {collection_name}: {e}")
             return None
 
-    def _add_embeddings_to_record(
-        self, record: Dict[str, Any], source_texts: Dict[str, str]
+    def _add_embeddings_from_record(
+        self, record: Dict[str, Any]
     ) -> None:
         """
-        Generate embeddings from source texts and add them to the record.
+        Generate embeddings from source columns in record and add them to the record.
+
+        Reads EMBEDDING_SOURCE_COLUMNS from config to determine which columns
+        in the record to use as embedding sources. Does NOT use any defaults.
 
         Args:
             record: Record dict to add embeddings to (modified in place)
-            source_texts: Dict mapping source column name -> text to embed
 
         Raises:
             RuntimeError: If embedding generation fails
         """
         from .schemas import get_embedding_source_mapping
 
-        # Get source-to-embedding column mapping
+        # Get source-to-embedding column mapping from config (no defaults!)
         source_to_embedding = get_embedding_source_mapping()
 
         # Generate embeddings for each source column
         for source_col, embedding_col in source_to_embedding.items():
-            if source_col not in source_texts:
-                continue
-
-            source_text = source_texts[source_col]
-            if not source_text:
+            # Get source text from record - MUST exist, no defaults
+            if source_col not in record:
                 error_msg = (
                     f"Cannot generate embedding for column '{embedding_col}': "
-                    f"source column '{source_col}' is empty."
+                    f"source column '{source_col}' not found in record. "
+                    f"Record must contain all columns defined in EMBEDDING_SOURCE_COLUMNS config."
                 )
                 print(f"ERROR: {error_msg}")
                 raise RuntimeError(error_msg)
 
-            # Generate embedding using centralized function
+            source_text = record[source_col]
+            if not source_text:
+                error_msg = (
+                    f"Cannot generate embedding for column '{embedding_col}': "
+                    f"source column '{source_col}' is empty. "
+                    f"All source columns must have non-empty values."
+                )
+                print(f"ERROR: {error_msg}")
+                raise RuntimeError(error_msg)
+
+            # Generate embedding using centralized function - MUST succeed
             try:
                 embedding = generate_embedding(source_text)
                 record[embedding_col] = embedding

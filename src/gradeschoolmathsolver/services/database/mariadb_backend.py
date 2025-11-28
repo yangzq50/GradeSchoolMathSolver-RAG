@@ -247,28 +247,26 @@ class MariaDBDatabaseService(DatabaseService):
             return False
 
     def insert_record(
-        self, collection_name: str, record: Dict[str, Any],
-        record_id: Optional[str] = None,
-        source_texts: Optional[Dict[str, str]] = None
+        self, collection_name: str, record: Dict[str, Any]
     ) -> Optional[str]:
         """
-        Insert a row (record) in MariaDB (create or update), with optional embedding generation.
+        Insert a row (record) in MariaDB (create or update), with automatic embedding generation.
 
-        If source_texts is provided, embeddings will be generated and stored in separate
-        embedding tables (one per embedding column).
+        The database service handles all embedding operations internally:
+        - Generates a UUID for record_id automatically
+        - Reads EMBEDDING_SOURCE_COLUMNS from config to determine source text columns
+        - Generates embeddings from source columns in the record
+        - Stores embeddings in separate tables (one per embedding column)
 
         Args:
             collection_name: Name of the table
-            record: Record data
-            record_id: Optional record ID (auto-generated UUID if not provided)
-            source_texts: Optional dict mapping source column name -> text to embed
-                         Example: {'question': 'What is 5+3?', 'equation': '5+3'}
+            record: Record data (must contain all source columns from config)
 
         Returns:
             str: Record ID if successful, None otherwise
 
         Raises:
-            RuntimeError: If embedding generation fails when source_texts provided
+            RuntimeError: If embedding generation or insertion fails
         """
         if not self.connection:
             return None
@@ -277,9 +275,8 @@ class MariaDBDatabaseService(DatabaseService):
             import uuid
             cursor = self.connection.cursor()
 
-            if record_id is None:
-                # Generate UUID for new record
-                record_id = str(uuid.uuid4())
+            # Generate UUID for new record
+            record_id = str(uuid.uuid4())
 
             # Determine primary key column
             if collection_name == 'users':
@@ -296,50 +293,64 @@ class MariaDBDatabaseService(DatabaseService):
             cursor.execute(replace_query, tuple(record_with_id.values()))
             cursor.close()
 
-            # If source_texts provided, generate and store embeddings
-            if source_texts:
-                self._insert_embeddings(collection_name, record_id, source_texts)
+            # Generate and store embeddings from source columns in the record
+            # Read source columns from config - do NOT use any defaults
+            self._insert_embeddings_from_record(collection_name, record_id, record)
 
             return record_id
 
+        except RuntimeError:
+            # Re-raise RuntimeError from embedding operations
+            raise
         except MySQLError as e:
             print(f"ERROR: Failed to insert record in {collection_name}: {e}")
             return None
 
-    def _insert_embeddings(
-        self, collection_name: str, record_id: str, source_texts: Dict[str, str]
+    def _insert_embeddings_from_record(
+        self, collection_name: str, record_id: str, record: Dict[str, Any]
     ) -> None:
         """
-        Generate embeddings from source texts and insert into separate embedding tables.
+        Generate embeddings from source columns in record and insert into separate tables.
+
+        Reads EMBEDDING_SOURCE_COLUMNS from config to determine which columns
+        in the record to use as embedding sources. Does NOT use any defaults.
 
         Args:
             collection_name: Name of the main table
             record_id: Record ID to link embeddings to
-            source_texts: Dict mapping source column name -> text to embed
+            record: The record containing source text columns
 
         Raises:
             RuntimeError: If embedding generation or insertion fails
         """
         from .schemas import get_embedding_source_mapping, get_embedding_table_name
 
-        # Get source-to-embedding column mapping
+        # Get source-to-embedding column mapping from config (no defaults!)
         source_to_embedding = get_embedding_source_mapping()
 
         # Generate embeddings and insert into separate tables
         for source_col, embedding_col in source_to_embedding.items():
-            if source_col not in source_texts:
-                continue
-
-            source_text = source_texts[source_col]
-            if not source_text:
+            # Get source text from record - MUST exist, no defaults
+            if source_col not in record:
                 error_msg = (
                     f"Cannot generate embedding for column '{embedding_col}': "
-                    f"source column '{source_col}' is empty."
+                    f"source column '{source_col}' not found in record. "
+                    f"Record must contain all columns defined in EMBEDDING_SOURCE_COLUMNS config."
                 )
                 print(f"ERROR: {error_msg}")
                 raise RuntimeError(error_msg)
 
-            # Generate embedding using centralized function
+            source_text = record[source_col]
+            if not source_text:
+                error_msg = (
+                    f"Cannot generate embedding for column '{embedding_col}': "
+                    f"source column '{source_col}' is empty. "
+                    f"All source columns must have non-empty values."
+                )
+                print(f"ERROR: {error_msg}")
+                raise RuntimeError(error_msg)
+
+            # Generate embedding using centralized function - MUST succeed
             try:
                 embedding = generate_embedding(source_text)
             except RuntimeError as e:
@@ -349,7 +360,7 @@ class MariaDBDatabaseService(DatabaseService):
             # Get the embedding table name
             embedding_table = get_embedding_table_name(collection_name, embedding_col)
 
-            # Insert embedding into separate table
+            # Insert embedding into separate table - MUST succeed
             if self.connection is None:
                 raise RuntimeError("Database connection is not available")
             try:

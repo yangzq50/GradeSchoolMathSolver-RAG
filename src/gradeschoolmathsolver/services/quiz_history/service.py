@@ -9,9 +9,15 @@ This service provides:
 - Graceful degradation when database is unavailable
 
 Embedding Generation:
-The service delegates embedding generation and storage to the database service.
-The database service handles backend-specific storage (e.g., separate tables for MariaDB).
-Services SHOULD NOT care about which database backend is being used.
+All embedding generation and storage is handled by the database service.
+This service does NOT know or care about:
+- Which database backend is being used (MariaDB, Elasticsearch, etc.)
+- How embeddings are generated or stored
+- Source-to-embedding column mapping
+
+The database service determines everything from config.py:
+- EMBEDDING_SOURCE_COLUMNS: Which columns to use as embedding sources
+- EMBEDDING_COLUMN_NAMES: Names for embedding columns
 """
 from datetime import datetime
 from typing import List, Optional, Dict, Any
@@ -28,8 +34,9 @@ class QuizHistoryService:
     It gracefully degrades to limited mode when database is unavailable.
 
     Embedding Support:
-    The service provides source text data to the database service, which handles
-    embedding generation and storage appropriately for the backend.
+    All embedding operations are handled internally by the database service.
+    This service does NOT provide source texts or embedding configuration -
+    the database service determines everything from config.py.
 
     Attributes:
         config: Configuration object
@@ -57,24 +64,26 @@ class QuizHistoryService:
         """
         Add a quiz history record to database with vector embeddings
 
-        This method provides source text data to the database service, which
-        handles embedding generation and storage appropriately for the backend.
-
-        The source-to-embedding mapping is configured via:
-        - EMBEDDING_SOURCE_COLUMNS: Source text columns (default: 'question,equation')
-        - EMBEDDING_COLUMN_NAMES: Embedding columns (default: 'question_embedding,equation_embedding')
+        The database service handles all embedding generation and storage internally.
+        It determines source columns from EMBEDDING_SOURCE_COLUMNS config and
+        generates embeddings automatically.
 
         Args:
             history: QuizHistory object to store
 
         Returns:
             True if successful, False if database unavailable or error occurs
+
+        Raises:
+            RuntimeError: Propagated from database service if embedding generation fails
         """
         if not self.db.is_connected():
             return False
 
         try:
-            # Build the base document (without embeddings)
+            # Build the document
+            # The database service will generate embeddings from source columns
+            # as configured in EMBEDDING_SOURCE_COLUMNS (e.g., 'question', 'equation')
             doc: Dict[str, Any] = {
                 "username": history.username,
                 "question": history.question,
@@ -85,26 +94,18 @@ class QuizHistoryService:
                 "is_correct": history.is_correct,
                 "category": history.category,
                 "timestamp": history.timestamp.isoformat(),
-                "reviewed": False  # Default value for new records
+                "reviewed": False
             }
 
-            # Prepare source texts for embedding generation
-            # The database service will generate embeddings from these
-            source_texts = {
-                'question': history.question,
-                'equation': history.user_equation,
-            }
-
-            # Use database service to insert with embeddings
             # Database service handles all embedding generation internally
-            doc_id = self.db.insert_record(
-                self.index_name,
-                doc,
-                record_id=None,  # Auto-generate UUID
-                source_texts=source_texts
-            )
+            # No record_id or source_texts parameters needed - database decides everything
+            doc_id = self.db.insert_record(self.index_name, doc)
 
             return doc_id is not None
+        except RuntimeError as e:
+            # Embedding generation or insertion failed - propagate with error logging
+            print(f"ERROR: Failed to add history: {e}")
+            raise
         except Exception as e:
             print(f"ERROR: Failed to add history: {e}")
             return False

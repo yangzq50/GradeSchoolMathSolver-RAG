@@ -3,6 +3,7 @@ Tests for config centralization - ensuring all env vars are accessed through con
 """
 import sys
 import os
+from typing import Any
 from unittest.mock import patch
 import importlib
 
@@ -201,7 +202,7 @@ def test_database_service_uses_config():
                 print("✅ Database service selection correctly uses Config")
 
 
-def _is_os_getenv_call(node) -> bool:  # type: ignore[no-untyped-def]
+def _is_os_getenv_call(node: Any) -> bool:
     """Check if an AST node is an os.getenv call."""
     import ast
     return (isinstance(node, ast.Call) and
@@ -211,7 +212,7 @@ def _is_os_getenv_call(node) -> bool:  # type: ignore[no-untyped-def]
             node.func.value.id == 'os')
 
 
-def _check_file_for_getenv(filepath, violations: list) -> None:  # type: ignore[no-untyped-def]
+def _check_file_for_getenv(filepath: Any, violations: list) -> None:
     """Check a Python file for direct os.getenv calls."""
     import ast
 

@@ -5,8 +5,17 @@ Provides a unified interface for database operations, allowing easy switching be
 Currently supports Elasticsearch and MariaDB.
 
 Embedding Generation:
-The database service handles embedding generation internally when inserting records.
-Other services do not need to know about the database backend or how embeddings are stored.
+The database service handles ALL embedding generation internally when inserting records.
+Other services do NOT need to:
+- Know which database backend is being used
+- Provide source texts for embedding generation
+- Handle embedding storage
+
+The database service reads from config.py:
+- EMBEDDING_SOURCE_COLUMNS: Which columns in the record to use as embedding sources
+- EMBEDDING_COLUMN_NAMES: Names for embedding columns
+- EMBEDDING_DIMENSIONS: Dimensions for each embedding
+
 For MariaDB, embeddings are stored in separate tables (one per embedding column).
 For Elasticsearch, embeddings are stored in the same document.
 
@@ -84,9 +93,17 @@ class DatabaseService(ABC):
     without changing business logic.
 
     Embedding Generation:
-    The database service handles embedding generation internally using the
-    centralized generate_embedding() function. Callers provide source_texts
-    dict mapping source column names to text values when inserting records.
+    The database service handles ALL embedding generation internally.
+    It reads EMBEDDING_SOURCE_COLUMNS from config to determine which columns
+    in the record to use as embedding sources. Callers do NOT need to:
+    - Know about embedding columns or source columns
+    - Provide source texts for embedding generation
+    - Handle embedding storage
+
+    The database service uses config.py to determine:
+    - EMBEDDING_SOURCE_COLUMNS: Source columns in record for embedding generation
+    - EMBEDDING_COLUMN_NAMES: Names for embedding columns
+    - EMBEDDING_DIMENSIONS: Dimensions for each embedding
     """
 
     @abstractmethod
@@ -153,31 +170,29 @@ class DatabaseService(ABC):
 
     @abstractmethod
     def insert_record(
-        self, collection_name: str, record: Dict[str, Any],
-        record_id: Optional[str] = None,
-        source_texts: Optional[Dict[str, str]] = None
+        self, collection_name: str, record: Dict[str, Any]
     ) -> Optional[str]:
         """
-        Insert a record (create or update), with optional embedding generation.
+        Insert a record (create or update), with automatic embedding generation.
 
-        If source_texts is provided, embeddings will be generated for the specified
-        source columns and stored appropriately for the database backend:
-        - For Elasticsearch: Embeddings are added to the document
-        - For MariaDB: Embeddings are stored in separate tables (one per embedding column)
+        The database service handles all embedding operations internally:
+        - Generates a UUID for record_id automatically
+        - Reads EMBEDDING_SOURCE_COLUMNS from config to determine source text columns
+        - Generates embeddings from source columns in the record
+        - Stores embeddings appropriately for the backend
+
+        For Elasticsearch: Embeddings are added to the document
+        For MariaDB: Embeddings are stored in separate tables (one per embedding column)
 
         Args:
             collection_name: Name of the collection
-            record: Record data
-            record_id: Optional record ID (auto-generated UUID if not provided)
-            source_texts: Optional dict mapping source column name -> text to embed
-                         Example: {'question': 'What is 5+3?', 'equation': '5+3'}
-                         If provided, embeddings will be generated and stored.
+            record: Record data (must contain all source columns defined in config)
 
         Returns:
             str: Record ID if successful, None otherwise
 
         Raises:
-            RuntimeError: If embedding generation fails when source_texts provided
+            RuntimeError: If embedding generation fails
         """
         pass
 
