@@ -32,7 +32,7 @@ class AccountService:
         answers_index: Name of the answers index
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.config = Config()
         self.users_index = "users"
         self.answers_index = self.config.ELASTICSEARCH_INDEX
@@ -48,7 +48,7 @@ class AccountService:
         """
         return bool(self.db.is_connected())
 
-    def _create_collections(self):
+    def _create_collections(self) -> None:
         """
         Create database collections with appropriate mappings
 

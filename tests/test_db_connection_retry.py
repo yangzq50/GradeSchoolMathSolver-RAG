@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def test_mariadb_connection_retry_success_on_second_attempt():
+def test_mariadb_connection_retry_success_on_second_attempt() -> None:
     """Test MariaDB connection succeeds on second attempt"""
     from gradeschoolmathsolver.services.database.mariadb_backend import MariaDBDatabaseService
     from mysql.connector import Error as MySQLError
@@ -31,7 +31,7 @@ def test_mariadb_connection_retry_success_on_second_attempt():
         print("✅ MariaDB retry logic: Success on second attempt")
 
 
-def test_mariadb_connection_retry_exhausted():
+def test_mariadb_connection_retry_exhausted() -> None:
     """Test MariaDB connection fails after exhausting retries"""
     from gradeschoolmathsolver.services.database.mariadb_backend import MariaDBDatabaseService
     from mysql.connector import Error as MySQLError
@@ -47,7 +47,7 @@ def test_mariadb_connection_retry_exhausted():
         print("✅ MariaDB retry logic: Properly exhausts retries")
 
 
-def test_elasticsearch_connection_retry_success_on_second_attempt():
+def test_elasticsearch_connection_retry_success_on_second_attempt() -> None:
     """Test Elasticsearch connection succeeds on second attempt"""
     from gradeschoolmathsolver.services.database.elasticsearch_backend import ElasticsearchDatabaseService
 
@@ -69,7 +69,7 @@ def test_elasticsearch_connection_retry_success_on_second_attempt():
         print("✅ Elasticsearch retry logic: Success on second attempt")
 
 
-def test_elasticsearch_connection_retry_exhausted():
+def test_elasticsearch_connection_retry_exhausted() -> None:
     """Test Elasticsearch connection fails after exhausting retries"""
     from gradeschoolmathsolver.services.database.elasticsearch_backend import ElasticsearchDatabaseService
     from elasticsearch import ConnectionError as ESConnectionError
@@ -85,7 +85,7 @@ def test_elasticsearch_connection_retry_exhausted():
         print("✅ Elasticsearch retry logic: Properly exhausts retries")
 
 
-def test_exponential_backoff():
+def test_exponential_backoff() -> None:
     """Test that retry delays follow exponential backoff pattern"""
     from gradeschoolmathsolver.services.database.mariadb_backend import MariaDBDatabaseService
     from mysql.connector import Error as MySQLError
@@ -110,7 +110,7 @@ def test_exponential_backoff():
         print("✅ Exponential backoff: Delays follow correct pattern")
 
 
-def test_immediate_success_no_retry():
+def test_immediate_success_no_retry() -> None:
     """Test that no retry happens when connection succeeds immediately"""
     from gradeschoolmathsolver.services.database.mariadb_backend import MariaDBDatabaseService
 

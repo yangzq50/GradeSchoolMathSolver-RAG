@@ -11,7 +11,7 @@ from gradeschoolmathsolver.services.exam import ExamService  # noqa: E402
 from gradeschoolmathsolver.models import ExamRequest, Question  # noqa: E402
 
 
-def test_create_exam_basic():
+def test_create_exam_basic() -> None:
     """Test basic exam creation with specified parameters"""
     service = ExamService()
 
@@ -34,7 +34,7 @@ def test_create_exam_basic():
     print("✅ ExamService: Basic exam creation works correctly")
 
 
-def test_create_exam_different_difficulties():
+def test_create_exam_different_difficulties() -> None:
     """Test exam creation with different difficulty levels"""
     service = ExamService()
 
@@ -57,7 +57,7 @@ def test_create_exam_different_difficulties():
     print("✅ ExamService: All difficulty levels work correctly")
 
 
-def test_create_exam_question_variety():
+def test_create_exam_question_variety() -> None:
     """Test that exam creates different questions"""
     service = ExamService()
 
@@ -79,7 +79,7 @@ def test_create_exam_question_variety():
     print("✅ ExamService: Questions show variety")
 
 
-def test_process_human_exam_correct_answers():
+def test_process_human_exam_correct_answers() -> None:
     """Test processing exam with correct answers"""
     service = ExamService()
 
@@ -95,7 +95,7 @@ def test_process_human_exam_correct_answers():
     # Submit all correct answers
     answers = [q.answer for q in questions]
 
-    results = service.process_human_exam(request, questions, answers)
+    results = service.process_human_exam(request, questions, answers)  # type: ignore[arg-type]
 
     # Verify results
     assert results["correct_answers"] == 3
@@ -106,7 +106,7 @@ def test_process_human_exam_correct_answers():
     print("✅ ExamService: Correct answer processing works")
 
 
-def test_process_human_exam_mixed_answers():
+def test_process_human_exam_mixed_answers() -> None:
     """Test processing exam with mixed correct/incorrect answers"""
     service = ExamService()
 
@@ -127,7 +127,7 @@ def test_process_human_exam_mixed_answers():
         questions[3].answer - 100  # wrong
     ]
 
-    results = service.process_human_exam(request, questions, answers)
+    results = service.process_human_exam(request, questions, answers)  # type: ignore[arg-type]
 
     # Verify results
     assert results["correct_answers"] == 2
@@ -144,7 +144,7 @@ def test_process_human_exam_mixed_answers():
     print("✅ ExamService: Mixed answer processing works")
 
 
-def test_exam_service_creates_user_if_not_exists():
+def test_exam_service_creates_user_if_not_exists() -> None:
     """Test that exam service creates user if they don't exist"""
     import pytest
     service = ExamService()
@@ -166,7 +166,7 @@ def test_exam_service_creates_user_if_not_exists():
     answers = [q.answer for q in questions]
 
     # This should create the user automatically
-    results = service.process_human_exam(request, questions, answers)
+    results = service.process_human_exam(request, questions, answers)  # type: ignore[arg-type]
 
     # Verify user was created and results are correct
     assert results is not None

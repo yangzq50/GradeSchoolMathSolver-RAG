@@ -17,7 +17,7 @@ from gradeschoolmathsolver.services.teacher import TeacherService
 class ExamService:
     """Service for conducting exams"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.qa_service = QAGenerationService()
         self.classification_service = ClassificationService()
         self.account_service = AccountService()

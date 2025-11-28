@@ -9,7 +9,7 @@ import random
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def test_mistake_review_service():
+def test_mistake_review_service() -> None:
     """Test mistake review service"""
     from gradeschoolmathsolver.services.mistake_review import MistakeReviewService
     from gradeschoolmathsolver.services.account import AccountService

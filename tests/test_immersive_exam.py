@@ -8,7 +8,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def test_immersive_exam_models():
+def test_immersive_exam_models() -> None:
     """Test immersive exam models"""
     from gradeschoolmathsolver.models import (
         ImmersiveExamConfig, ImmersiveExam, ImmersiveParticipant,
@@ -59,7 +59,7 @@ def test_immersive_exam_models():
     print("✅ Immersive Exam Models: All models validated")
 
 
-def test_immersive_exam_service():
+def test_immersive_exam_service() -> None:
     """Test immersive exam service"""
     from gradeschoolmathsolver.services.immersive_exam import ImmersiveExamService
     from gradeschoolmathsolver.models import ImmersiveExamConfig, RevealStrategy, ParticipantType
@@ -84,14 +84,16 @@ def test_immersive_exam_service():
     success = service.register_participant(exam.exam_id, "basic_agent", ParticipantType.AGENT)
     assert success is True
 
-    exam = service.get_exam(exam.exam_id)
+    exam = service.get_exam(exam.exam_id)  # type: ignore[assignment]
+    assert exam is not None
     assert len(exam.participants) == 2
 
     # Start exam
     success = service.start_exam(exam.exam_id)
     assert success is True
 
-    exam = service.get_exam(exam.exam_id)
+    exam = service.get_exam(exam.exam_id)  # type: ignore[assignment]
+    assert exam is not None
     assert exam.status == "in_progress"
 
     # Get status
@@ -104,7 +106,7 @@ def test_immersive_exam_service():
     print("✅ Immersive Exam Service: Create, register, start, and status working")
 
 
-def test_immersive_exam_answer_flow():
+def test_immersive_exam_answer_flow() -> None:
     """Test answer submission and advancement"""
     from gradeschoolmathsolver.services.immersive_exam import ImmersiveExamService
     from gradeschoolmathsolver.models import (
@@ -130,7 +132,7 @@ def test_immersive_exam_answer_flow():
     service.start_exam(exam.exam_id)
 
     # Get first question
-    exam = service.get_exam(exam.exam_id)
+    exam = service.get_exam(exam.exam_id)  # type: ignore[assignment]
     first_question = exam.questions[0]
 
     # Submit answer from first participant
@@ -167,7 +169,7 @@ def test_immersive_exam_answer_flow():
     success = service.advance_to_next_question(exam.exam_id)
     assert success is True
 
-    exam = service.get_exam(exam.exam_id)
+    exam = service.get_exam(exam.exam_id)  # type: ignore[assignment]
     assert exam.current_question_index == 1
 
     # Get participant scores
@@ -181,7 +183,7 @@ def test_immersive_exam_answer_flow():
     print("✅ Immersive Exam Answer Flow: Submit, check, and advance working")
 
 
-def test_reveal_strategies():
+def test_reveal_strategies() -> None:
     """Test different reveal strategies"""
     from gradeschoolmathsolver.services.immersive_exam import ImmersiveExamService
     from gradeschoolmathsolver.models import (
@@ -204,6 +206,7 @@ def test_reveal_strategies():
 
     # Student1 submits answer
     exam_obj = service.get_exam(exam.exam_id)
+    assert exam_obj is not None
     answer1 = ImmersiveExamAnswer(
         exam_id=exam.exam_id,
         participant_id="student1",
@@ -214,19 +217,21 @@ def test_reveal_strategies():
 
     # Student2 should see student1's answer (lower order)
     status = service.get_exam_status(exam.exam_id, "student2")
+    assert status is not None
     assert status.can_see_previous_answers is True
     assert len(status.previous_answers) == 1
     assert status.previous_answers[0]['participant_id'] == "student1"
 
     # Student1 should not see others (no one before them)
     status = service.get_exam_status(exam.exam_id, "student1")
+    assert status is not None
     assert status.can_see_previous_answers is True
     assert len(status.previous_answers) == 0
 
     print("✅ Reveal Strategies: Reveal to later participants working")
 
 
-def test_exam_completion():
+def test_exam_completion() -> None:
     """Test exam completion and results"""
     from gradeschoolmathsolver.services.immersive_exam import ImmersiveExamService
     from gradeschoolmathsolver.models import (
@@ -246,6 +251,7 @@ def test_exam_completion():
     service.start_exam(exam.exam_id)
 
     exam_obj = service.get_exam(exam.exam_id)
+    assert exam_obj is not None
 
     # Answer all questions
     for i in range(len(exam_obj.questions)):
@@ -260,6 +266,7 @@ def test_exam_completion():
 
     # Check exam status
     exam_obj = service.get_exam(exam.exam_id)
+    assert exam_obj is not None
     assert exam_obj.status == "completed"
 
     # Get results
@@ -274,7 +281,7 @@ def test_exam_completion():
     print("✅ Exam Completion: Completion and results working")
 
 
-def run_all_tests():
+def run_all_tests() -> bool:
     """Run all immersive exam tests"""
     print("\n🧪 Running Immersive Exam Tests")
     print("=" * 50)

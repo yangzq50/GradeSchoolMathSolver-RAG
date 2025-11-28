@@ -30,7 +30,7 @@ from typing import List, Optional, Dict, Any
 _embedding_service = None
 
 
-def get_embedding_service():
+def get_embedding_service() -> Any:
     """
     Get the embedding service instance for generating vector embeddings.
 
@@ -348,7 +348,7 @@ def get_database_service() -> DatabaseService:
     return _db_service
 
 
-def set_database_service(service: DatabaseService):
+def set_database_service(service: DatabaseService) -> None:
     """
     Set the global database service instance
 

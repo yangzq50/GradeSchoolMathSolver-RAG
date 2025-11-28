@@ -8,7 +8,7 @@ import pytest
 from gradeschoolmathsolver.services.qa_generation.service import QAGenerationService
 
 
-def test_integer_only_equations():
+def test_integer_only_equations() -> None:
     """Test that all equation generation produces integer results"""
     service = QAGenerationService()
 
@@ -32,7 +32,7 @@ def test_integer_only_equations():
                 )
 
 
-def test_easy_equations_integer():
+def test_easy_equations_integer() -> None:
     """Test easy equations produce integer results"""
     service = QAGenerationService()
 
@@ -41,7 +41,7 @@ def test_easy_equations_integer():
         assert answer == int(answer), f"Easy equation {equation} = {answer} is not integer"
 
 
-def test_medium_equations_integer():
+def test_medium_equations_integer() -> None:
     """Test medium equations produce integer results"""
     service = QAGenerationService()
 
@@ -50,7 +50,7 @@ def test_medium_equations_integer():
         assert answer == int(answer), f"Medium equation {equation} = {answer} is not integer"
 
 
-def test_hard_equations_integer():
+def test_hard_equations_integer() -> None:
     """Test hard equations produce integer results"""
     service = QAGenerationService()
 
@@ -59,7 +59,7 @@ def test_hard_equations_integer():
         assert answer == int(answer), f"Hard equation {equation} = {answer} is not integer"
 
 
-def test_hard_division_equations():
+def test_hard_division_equations() -> None:
     """Test that hard difficulty division equations always produce integers"""
     service = QAGenerationService()
 
@@ -86,7 +86,7 @@ def test_hard_division_equations():
     print(f"\nTested {division_count} division equations, all produced integer results")
 
 
-def test_question_generation():
+def test_question_generation() -> None:
     """Test complete question generation produces integer answers"""
     service = QAGenerationService()
 
@@ -97,7 +97,7 @@ def test_question_generation():
         assert isinstance(question.answer, int), "Answer should be stored as int"
 
 
-def test_format_number_utility():
+def test_format_number_utility() -> None:
     """Test the format_number utility function"""
     from gradeschoolmathsolver.services.qa_generation.service import format_number
 

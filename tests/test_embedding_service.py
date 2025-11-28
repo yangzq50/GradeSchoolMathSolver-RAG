@@ -3,19 +3,20 @@ Unit tests for the Embedding Service
 
 Tests embedding generation functionality with mocked API responses.
 """
+from typing import Any, Dict
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
 from gradeschoolmathsolver.services.embedding import EmbeddingService
 
 
 @pytest.fixture
-def embedding_service():
+def embedding_service() -> EmbeddingService:
     """Create an EmbeddingService instance for testing"""
     return EmbeddingService(max_retries=3, timeout=30)
 
 
 @pytest.fixture
-def mock_embedding_response():
+def mock_embedding_response() -> Dict[str, Any]:
     """Create a mock successful embedding response"""
     return {
         "object": "list",
@@ -35,7 +36,7 @@ def mock_embedding_response():
 
 
 @pytest.fixture
-def mock_batch_embedding_response():
+def mock_batch_embedding_response() -> Dict[str, Any]:
     """Create a mock successful batch embedding response"""
     return {
         "object": "list",
@@ -67,20 +68,23 @@ def mock_batch_embedding_response():
 class TestEmbeddingService:
     """Test suite for EmbeddingService"""
 
-    def test_initialization(self, embedding_service):
+    def test_initialization(self, embedding_service: EmbeddingService) -> None:
         """Test service initialization"""
         assert embedding_service.max_retries == 3
         assert embedding_service.timeout == 30
         assert embedding_service.config is not None
 
-    def test_custom_initialization(self):
+    def test_custom_initialization(self) -> None:
         """Test service initialization with custom parameters"""
         service = EmbeddingService(max_retries=5, timeout=60)
         assert service.max_retries == 5
         assert service.timeout == 60
 
     @patch('gradeschoolmathsolver.model_access.requests.post')
-    def test_generate_embedding_success(self, mock_post, embedding_service, mock_embedding_response):
+    def test_generate_embedding_success(
+        self, mock_post: MagicMock, embedding_service: EmbeddingService,
+        mock_embedding_response: Dict[str, Any]
+    ) -> None:
         """Test successful single embedding generation"""
         # Setup mock
         mock_response = Mock()
@@ -100,7 +104,7 @@ class TestEmbeddingService:
         mock_post.assert_called_once()
 
     @patch('gradeschoolmathsolver.model_access.requests.post')
-    def test_generate_embedding_api_failure(self, mock_post, embedding_service):
+    def test_generate_embedding_api_failure(self, mock_post: MagicMock, embedding_service: EmbeddingService) -> None:
         """Test embedding generation with API failure"""
         # Setup mock to fail
         mock_response = Mock()
@@ -117,7 +121,7 @@ class TestEmbeddingService:
         assert mock_post.call_count == 3
 
     @patch('gradeschoolmathsolver.model_access.requests.post')
-    def test_generate_embedding_timeout(self, mock_post, embedding_service):
+    def test_generate_embedding_timeout(self, mock_post, embedding_service) -> None:
         """Test embedding generation with timeout"""
         # Setup mock to timeout
         mock_post.side_effect = Exception("Timeout")
@@ -131,7 +135,7 @@ class TestEmbeddingService:
         assert mock_post.call_count == 3
 
     @patch('gradeschoolmathsolver.model_access.requests.post')
-    def test_generate_embedding_retry_success(self, mock_post, embedding_service, mock_embedding_response):
+    def test_generate_embedding_retry_success(self, mock_post, embedding_service, mock_embedding_response) -> None:
         """Test embedding generation succeeds after retry"""
         # Setup mock to fail first, then succeed
         mock_response_fail = Mock()
@@ -152,23 +156,26 @@ class TestEmbeddingService:
         assert len(embedding) == 5
         assert mock_post.call_count == 2
 
-    def test_generate_embedding_empty_string(self, embedding_service):
+    def test_generate_embedding_empty_string(self, embedding_service) -> None:
         """Test embedding generation with empty string"""
         embedding = embedding_service.generate_embedding("")
         assert embedding is None
 
-    def test_generate_embedding_none_input(self, embedding_service):
+    def test_generate_embedding_none_input(self, embedding_service) -> None:
         """Test embedding generation with None input"""
         embedding = embedding_service.generate_embedding(None)
         assert embedding is None
 
-    def test_generate_embedding_invalid_type(self, embedding_service):
+    def test_generate_embedding_invalid_type(self, embedding_service) -> None:
         """Test embedding generation with invalid input type"""
         embedding = embedding_service.generate_embedding(123)
         assert embedding is None
 
     @patch('gradeschoolmathsolver.model_access.requests.post')
-    def test_generate_embeddings_batch_success(self, mock_post, embedding_service, mock_batch_embedding_response):
+    def test_generate_embeddings_batch_success(
+        self, mock_post: MagicMock, embedding_service: EmbeddingService,
+        mock_batch_embedding_response: Dict[str, Any]
+    ) -> None:
         """Test successful batch embedding generation"""
         # Setup mock
         mock_response = Mock()
@@ -191,7 +198,7 @@ class TestEmbeddingService:
         mock_post.assert_called_once()
 
     @patch('gradeschoolmathsolver.model_access.requests.post')
-    def test_generate_embeddings_batch_failure(self, mock_post, embedding_service):
+    def test_generate_embeddings_batch_failure(self, mock_post, embedding_service) -> None:
         """Test batch embedding generation with API failure
 
         Note: On failure, the batch method returns a list of None values
@@ -213,17 +220,17 @@ class TestEmbeddingService:
         assert all(e is None for e in embeddings)
         assert mock_post.call_count == 3
 
-    def test_generate_embeddings_batch_empty_list(self, embedding_service):
+    def test_generate_embeddings_batch_empty_list(self, embedding_service) -> None:
         """Test batch embedding generation with empty list"""
         embeddings = embedding_service.generate_embeddings_batch([])
         assert embeddings == []
 
-    def test_generate_embeddings_batch_none_input(self, embedding_service):
+    def test_generate_embeddings_batch_none_input(self, embedding_service) -> None:
         """Test batch embedding generation with None input"""
         embeddings = embedding_service.generate_embeddings_batch(None)
         assert embeddings == []
 
-    def test_generate_embeddings_batch_invalid_type(self, embedding_service):
+    def test_generate_embeddings_batch_invalid_type(self, embedding_service) -> None:
         """Test batch embedding generation with invalid input type"""
         embeddings = embedding_service.generate_embeddings_batch("not a list")
         assert embeddings == []
@@ -265,7 +272,7 @@ class TestEmbeddingService:
         assert len(embeddings[2]) == 5
 
     @patch('gradeschoolmathsolver.model_access.requests.post')
-    def test_is_available_true(self, mock_post, embedding_service, mock_embedding_response):
+    def test_is_available_true(self, mock_post, embedding_service, mock_embedding_response) -> None:
         """Test is_available returns True when service is up"""
         # Setup mock
         mock_response = Mock()
@@ -281,7 +288,7 @@ class TestEmbeddingService:
         mock_post.assert_called_once()
 
     @patch('gradeschoolmathsolver.model_access.requests.post')
-    def test_is_available_false(self, mock_post, embedding_service):
+    def test_is_available_false(self, mock_post: MagicMock, embedding_service: EmbeddingService) -> None:
         """Test is_available returns False when service is down"""
         # Setup mock to fail
         mock_post.side_effect = Exception("Connection error")
@@ -293,7 +300,7 @@ class TestEmbeddingService:
         assert available is False
 
     @patch('gradeschoolmathsolver.model_access.requests.post')
-    def test_api_call_with_correct_endpoint(self, mock_post, embedding_service, mock_embedding_response):
+    def test_api_call_with_correct_endpoint(self, mock_post, embedding_service, mock_embedding_response) -> None:
         """Test that API calls use correct endpoint format"""
         # Setup mock
         mock_response = Mock()
@@ -311,7 +318,7 @@ class TestEmbeddingService:
         assert '/v1/embeddings' in url
 
     @patch('gradeschoolmathsolver.model_access.requests.post')
-    def test_api_call_with_correct_payload(self, mock_post, embedding_service, mock_embedding_response):
+    def test_api_call_with_correct_payload(self, mock_post, embedding_service, mock_embedding_response) -> None:
         """Test that API calls include correct payload format"""
         # Setup mock
         mock_response = Mock()
@@ -331,7 +338,7 @@ class TestEmbeddingService:
         assert json_payload['input'] == [test_text]
 
     @patch('gradeschoolmathsolver.model_access.requests.post')
-    def test_malformed_response_handling(self, mock_post, embedding_service):
+    def test_malformed_response_handling(self, mock_post: MagicMock, embedding_service: EmbeddingService) -> None:
         """Test handling of malformed API responses"""
         # Setup mock with malformed response (missing 'data' field)
         mock_response = Mock()
@@ -346,7 +353,7 @@ class TestEmbeddingService:
         assert embedding is None
 
     @patch('gradeschoolmathsolver.model_access.requests.post')
-    def test_empty_data_in_response(self, mock_post, embedding_service):
+    def test_empty_data_in_response(self, mock_post, embedding_service) -> None:
         """Test handling of empty data array in response"""
         # Setup mock with empty data array
         mock_response = Mock()
@@ -361,7 +368,7 @@ class TestEmbeddingService:
         assert embedding is None
 
     @patch('gradeschoolmathsolver.model_access.requests.post')
-    def test_missing_embedding_in_response(self, mock_post, embedding_service):
+    def test_missing_embedding_in_response(self, mock_post, embedding_service) -> None:
         """Test handling of missing embedding field in response"""
         # Setup mock with missing embedding field
         mock_response = Mock()
@@ -383,7 +390,7 @@ class TestEmbeddingServiceEdgeCases:
     """Test edge cases and boundary conditions"""
 
     @patch('gradeschoolmathsolver.model_access.requests.post')
-    def test_very_long_text(self, mock_post, embedding_service, mock_embedding_response):
+    def test_very_long_text(self, mock_post, embedding_service, mock_embedding_response) -> None:
         """Test embedding generation with very long text"""
         # Setup mock
         mock_response = Mock()
@@ -400,7 +407,7 @@ class TestEmbeddingServiceEdgeCases:
         assert len(embedding) == 5
 
     @patch('gradeschoolmathsolver.model_access.requests.post')
-    def test_special_characters(self, mock_post, embedding_service, mock_embedding_response):
+    def test_special_characters(self, mock_post, embedding_service, mock_embedding_response) -> None:
         """Test embedding generation with special characters"""
         # Setup mock
         mock_response = Mock()
@@ -416,7 +423,7 @@ class TestEmbeddingServiceEdgeCases:
         assert embedding is not None
 
     @patch('gradeschoolmathsolver.model_access.requests.post')
-    def test_unicode_text(self, mock_post, embedding_service, mock_embedding_response):
+    def test_unicode_text(self, mock_post, embedding_service, mock_embedding_response) -> None:
         """Test embedding generation with unicode characters"""
         # Setup mock
         mock_response = Mock()
@@ -432,7 +439,7 @@ class TestEmbeddingServiceEdgeCases:
         assert embedding is not None
 
     @patch('gradeschoolmathsolver.model_access.requests.post')
-    def test_whitespace_only(self, mock_post, embedding_service, mock_embedding_response):
+    def test_whitespace_only(self, mock_post, embedding_service, mock_embedding_response) -> None:
         """Test embedding generation with whitespace-only text"""
         # Even though it's whitespace, the service should try to process it
         mock_response = Mock()
@@ -448,7 +455,7 @@ class TestEmbeddingServiceEdgeCases:
         assert embedding is not None
 
     @patch('gradeschoolmathsolver.model_access.requests.post')
-    def test_large_batch(self, mock_post, embedding_service):
+    def test_large_batch(self, mock_post, embedding_service) -> None:
         """Test batch embedding with many texts"""
         # Setup mock
         mock_response = Mock()
