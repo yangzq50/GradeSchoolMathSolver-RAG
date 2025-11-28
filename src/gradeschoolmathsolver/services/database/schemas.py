@@ -20,6 +20,7 @@ Configuration is read from config.py:
 - EMBEDDING_COLUMN_COUNT: Number of embedding columns (default: 2)
 - EMBEDDING_DIMENSIONS: Dimension for each column (default: 768)
 - EMBEDDING_COLUMN_NAMES: Names for each column (default: question_embedding,equation_embedding)
+- EMBEDDING_SOURCE_COLUMNS: Source text columns for embedding generation (default: question,equation)
 - ELASTICSEARCH_VECTOR_SIMILARITY: Similarity metric (default: cosine)
 """
 
@@ -168,6 +169,44 @@ MARIADB_TYPE_MAPPING = {
 }
 
 
+# ============================================================================
+# Answer History Schema Definition (common for all backends)
+# ============================================================================
+# This is the single source of truth for the answer_history schema columns.
+# Each entry: (column_name, elasticsearch_type, mariadb_type, is_text_column)
+# The is_text_column flag indicates if this column can be used as an embedding source.
+ANSWER_HISTORY_SCHEMA_COLUMNS = [
+    ('record_id', 'keyword', 'CHAR(36) CHARACTER SET ascii PRIMARY KEY', False),
+    ('username', 'keyword', 'VARCHAR(255) NOT NULL', False),
+    ('question', 'text', 'TEXT NOT NULL', True),  # Text column - can be embedding source
+    ('equation', 'text', 'VARCHAR(500) NOT NULL', True),  # Text column - can be embedding source
+    ('user_answer', 'integer', 'INT', False),
+    ('correct_answer', 'integer', 'INT NOT NULL', False),
+    ('is_correct', 'boolean', 'BOOLEAN NOT NULL', False),
+    ('category', 'keyword', 'VARCHAR(100) NOT NULL', False),
+    ('timestamp', 'date', 'TIMESTAMP NOT NULL', False),
+    ('reviewed', 'boolean', 'BOOLEAN DEFAULT FALSE', False),
+]
+
+# Standard indexes for answer_history (non-embedding indexes)
+ANSWER_HISTORY_INDEXES = [
+    'INDEX idx_username (username)',
+    'INDEX idx_timestamp (timestamp)',
+    'INDEX idx_category (category)',
+    'INDEX idx_reviewed (reviewed)',
+]
+
+
+def get_answer_history_text_columns() -> List[str]:
+    """
+    Get list of text columns that can be used as embedding sources.
+
+    Returns:
+        List of column names that are text columns in the answer_history schema.
+    """
+    return [col[0] for col in ANSWER_HISTORY_SCHEMA_COLUMNS if col[3]]
+
+
 def get_embedding_config() -> Dict[str, Any]:
     """
     Get embedding configuration from config.py
@@ -178,6 +217,10 @@ def get_embedding_config() -> Dict[str, Any]:
         - dimensions: List of dimensions for each column
         - similarity: Elasticsearch vector similarity metric
         - column_names: List of embedding column names
+        - source_columns: List of source text columns for embedding generation
+
+    Raises:
+        ValueError: If configuration validation fails (e.g., mismatched counts)
     """
     from gradeschoolmathsolver.config import Config
     config = Config()
@@ -186,6 +229,7 @@ def get_embedding_config() -> Dict[str, Any]:
     dimensions = config.EMBEDDING_DIMENSIONS
     similarity = config.ELASTICSEARCH_VECTOR_SIMILARITY
     column_names = config.EMBEDDING_COLUMN_NAMES
+    source_columns = config.EMBEDDING_SOURCE_COLUMNS
 
     # Extend dimensions list if needed (apply last dimension to remaining columns)
     if len(dimensions) < column_count:
@@ -197,16 +241,96 @@ def get_embedding_config() -> Dict[str, Any]:
         for i in range(len(column_names), column_count):
             column_names = column_names + [f'embedding_{i}']
 
+    # Extend source columns list if needed (generate names for additional columns)
+    if len(source_columns) < column_count:
+        for i in range(len(source_columns), column_count):
+            source_columns = source_columns + [f'source_{i}']
+
     # Truncate lists to match column_count
     column_names = column_names[:column_count]
     dimensions = dimensions[:column_count]
+    source_columns = source_columns[:column_count]
 
     return {
         'column_count': column_count,
         'dimensions': dimensions,
         'similarity': similarity,
-        'column_names': column_names
+        'column_names': column_names,
+        'source_columns': source_columns
     }
+
+
+def get_embedding_source_mapping() -> Dict[str, str]:
+    """
+    Get mapping from source text columns to embedding columns.
+
+    This function provides a convenient way to determine which source column
+    should be used to generate each embedding column. Services can use this
+    to know where to get the text for embedding generation.
+
+    Returns:
+        Dict mapping source column name -> embedding column name
+        Example: {'question': 'question_embedding', 'equation': 'equation_embedding'}
+    """
+    config = get_embedding_config()
+    source_columns = config['source_columns']
+    column_names = config['column_names']
+
+    return {
+        source: embedding
+        for source, embedding in zip(source_columns, column_names)
+    }
+
+
+def validate_embedding_config(valid_source_columns: List[str]) -> bool:
+    """
+    Validate embedding configuration for consistency.
+
+    Checks that:
+    - EMBEDDING_COLUMN_COUNT matches the length of column names and source columns
+    - All lists are properly aligned after extension/truncation
+    - Source columns exist in the provided valid source columns list
+
+    Args:
+        valid_source_columns: List of valid source column names from the database schema.
+                              All configured source columns must exist in this list.
+
+    Returns:
+        True if configuration is valid
+
+    Raises:
+        ValueError: If configuration is invalid with details about the issue
+    """
+    config = get_embedding_config()
+
+    column_count = config['column_count']
+    if len(config['column_names']) != column_count:
+        raise ValueError(
+            f"Column names count ({len(config['column_names'])}) "
+            f"does not match EMBEDDING_COLUMN_COUNT ({column_count})"
+        )
+
+    if len(config['source_columns']) != column_count:
+        raise ValueError(
+            f"Source columns count ({len(config['source_columns'])}) "
+            f"does not match EMBEDDING_COLUMN_COUNT ({column_count})"
+        )
+
+    if len(config['dimensions']) != column_count:
+        raise ValueError(
+            f"Dimensions count ({len(config['dimensions'])}) "
+            f"does not match EMBEDDING_COLUMN_COUNT ({column_count})"
+        )
+
+    # Validate source columns exist in the database schema
+    for source_col in config['source_columns']:
+        if source_col not in valid_source_columns:
+            raise ValueError(
+                f"Source column '{source_col}' does not exist in database schema. "
+                f"Valid source columns are: {valid_source_columns}"
+            )
+
+    return True
 
 
 def get_embedding_fields_elasticsearch(
@@ -258,6 +382,9 @@ def get_embedding_columns_mariadb(
     Uses VECTOR(dim) type for native vector storage in MariaDB 11.8+.
     This enables efficient vector similarity search using vector indexes.
 
+    Note: VECTOR columns must be NOT NULL for vector indexing to work in MariaDB.
+    MariaDB requires all parts of a VECTOR index to be NOT NULL.
+
     Args:
         column_names: List of embedding column names
         dimensions: List of dimensions for each column
@@ -277,8 +404,9 @@ def get_embedding_columns_mariadb(
             dim = dimensions[i]
         else:
             dim = dimensions[-1]
-        # Use VECTOR type with specified dimension for native vector storage
-        columns[col_name] = f"VECTOR({dim})"
+        # Use VECTOR type with NOT NULL constraint for vector index compatibility
+        # MariaDB requires NOT NULL for all parts of a VECTOR index
+        columns[col_name] = f"VECTOR({dim}) NOT NULL"
     return columns
 
 
@@ -288,20 +416,86 @@ def get_embedding_indexes_mariadb(
     """
     Generate MariaDB vector index definitions for embedding fields
 
-    Creates vector indexes for efficient similarity search on embedding columns.
-    MariaDB 11.8+ supports VECTOR INDEX for approximate nearest neighbor search.
+    Note: MariaDB doesn't support multiple VECTOR indexes on the same table.
+    Embeddings are now stored in separate tables (one per embedding column),
+    so this function returns an empty list since indexes are created per-table.
 
     Args:
         column_names: List of embedding column names
 
     Returns:
-        List of index definition strings
+        Empty list (indexes are created in separate embedding tables)
     """
-    indexes = []
-    for col_name in column_names:
-        # Create vector index for each embedding column
-        indexes.append(f"VECTOR INDEX idx_{col_name} ({col_name})")
-    return indexes
+    # MariaDB doesn't support multiple VECTOR indexes on same table
+    # Each embedding column gets its own table with its own index
+    return []
+
+
+def get_embedding_table_schemas_mariadb(
+    base_table_name: str,
+    embedding_config: Dict[str, Any]
+) -> Dict[str, Dict[str, Any]]:
+    """
+    Generate separate table schemas for each embedding column in MariaDB.
+
+    MariaDB doesn't support multiple VECTOR indexes on the same table.
+    This function creates a separate table for each embedding column.
+    Each table has:
+    - record_id: PRIMARY KEY that references the main table
+    - embedding: VECTOR column with a VECTOR INDEX
+
+    Note: The record_id is limited to CHAR(36) because MariaDB vector indexes
+    require primary keys to be max 256 bytes. CHAR(36) with ASCII is safe.
+
+    Args:
+        base_table_name: Name of the main table (e.g., 'quiz_history')
+        embedding_config: Embedding configuration from get_embedding_config()
+
+    Returns:
+        Dict mapping table_name -> schema dict with 'columns' and 'indexes'
+        Example: {
+            'quiz_history_question_embedding': {
+                'columns': {...},
+                'indexes': [...]
+            },
+            ...
+        }
+    """
+    column_names = embedding_config['column_names']
+    dimensions = embedding_config['dimensions']
+
+    tables = {}
+    for i, col_name in enumerate(column_names):
+        dim = dimensions[i] if i < len(dimensions) else dimensions[-1]
+        table_name = f"{base_table_name}_{col_name}"
+
+        tables[table_name] = {
+            "columns": {
+                # Use CHAR(36) for record_id because MariaDB vector indexes
+                # require primary key to be max 256 bytes
+                "record_id": "CHAR(36) CHARACTER SET ascii PRIMARY KEY",
+                "embedding": f"VECTOR({dim}) NOT NULL"
+            },
+            "indexes": [
+                "VECTOR INDEX idx_embedding (embedding)"
+            ]
+        }
+
+    return tables
+
+
+def get_embedding_table_name(base_table_name: str, embedding_col_name: str) -> str:
+    """
+    Get the table name for a specific embedding column.
+
+    Args:
+        base_table_name: Name of the main table (e.g., 'quiz_history')
+        embedding_col_name: Name of the embedding column
+
+    Returns:
+        Table name for the embedding (e.g., 'quiz_history_question_embedding')
+    """
+    return f"{base_table_name}_{embedding_col_name}"
 
 
 def get_user_schema_for_backend(backend: str) -> Dict[str, Any]:
@@ -342,30 +536,44 @@ def get_answer_history_schema_for_backend(
     """
     Get answer history (quiz_history) collection schema for specific database backend
 
+    Uses ANSWER_HISTORY_SCHEMA_COLUMNS as the single source of truth for column definitions.
+    Validates embedding configuration using the actual schema columns.
+
+    For MariaDB: Embeddings are stored in separate tables (one per embedding column)
+    because MariaDB doesn't support multiple VECTOR indexes on the same table.
+    Use get_embedding_table_schemas_mariadb() to get the embedding table schemas.
+
     Args:
         backend: 'elasticsearch' or 'mariadb'
         include_embeddings: Whether to include embedding columns (default: True)
+                           For MariaDB, this only validates config - embeddings go in separate tables
 
     Returns:
         Schema definition dict appropriate for the backend
+
+    Raises:
+        ValueError: If embedding configuration is invalid (when include_embeddings is True)
     """
     # Get embedding configuration
     embedding_config = get_embedding_config()
 
-    if backend == 'elasticsearch':
-        properties: Dict[str, Any] = {
-            "username": {"type": "keyword"},
-            "question": {"type": "text"},
-            "equation": {"type": "text"},
-            "user_answer": {"type": "integer"},
-            "correct_answer": {"type": "integer"},
-            "is_correct": {"type": "boolean"},
-            "category": {"type": "keyword"},
-            "timestamp": {"type": "date"},
-            "reviewed": {"type": "boolean"}
-        }
+    # Get valid source columns from the real schema definition
+    valid_source_columns = get_answer_history_text_columns()
 
-        # Add embedding fields if enabled
+    # Validate embedding configuration if embeddings are enabled
+    if include_embeddings:
+        validate_embedding_config(valid_source_columns)
+
+    if backend == 'elasticsearch':
+        # Build properties from the common schema definition
+        properties: Dict[str, Any] = {}
+        for col_name, es_type, _, _ in ANSWER_HISTORY_SCHEMA_COLUMNS:
+            # Skip record_id for Elasticsearch (it uses _id)
+            if col_name == 'record_id':
+                continue
+            properties[col_name] = {"type": es_type}
+
+        # Add embedding fields if enabled (Elasticsearch supports multiple vector fields)
         if include_embeddings:
             embedding_fields = get_embedding_fields_elasticsearch(
                 embedding_config['column_names'],
@@ -380,40 +588,15 @@ def get_answer_history_schema_for_backend(
             }
         }
     elif backend == 'mariadb':
-        columns: Dict[str, str] = {
-            "record_id": "VARCHAR(255) PRIMARY KEY",
-            "username": "VARCHAR(255) NOT NULL",
-            "question": "TEXT NOT NULL",
-            "equation": "VARCHAR(500) NOT NULL",
-            "user_answer": "INT",
-            "correct_answer": "INT NOT NULL",
-            "is_correct": "BOOLEAN NOT NULL",
-            "category": "VARCHAR(100) NOT NULL",
-            "timestamp": "TIMESTAMP NOT NULL",
-            "reviewed": "BOOLEAN DEFAULT FALSE"
-        }
+        # Build columns from the common schema definition
+        # Note: Embedding columns are NOT included here for MariaDB
+        # They are stored in separate tables (see get_embedding_table_schemas_mariadb)
+        columns: Dict[str, str] = {}
+        for col_name, _, maria_type, _ in ANSWER_HISTORY_SCHEMA_COLUMNS:
+            columns[col_name] = maria_type
 
-        # Base indexes for standard columns
-        indexes = [
-            "INDEX idx_username (username)",
-            "INDEX idx_timestamp (timestamp)",
-            "INDEX idx_category (category)",
-            "INDEX idx_reviewed (reviewed)"
-        ]
-
-        # Add embedding columns and vector indexes if enabled
-        if include_embeddings:
-            embedding_columns = get_embedding_columns_mariadb(
-                embedding_config['column_names'],
-                embedding_config['dimensions']
-            )
-            columns.update(embedding_columns)
-
-            # Add vector indexes for embedding columns
-            vector_indexes = get_embedding_indexes_mariadb(
-                embedding_config['column_names']
-            )
-            indexes.extend(vector_indexes)
+        # Use the predefined indexes (no vector indexes here)
+        indexes = list(ANSWER_HISTORY_INDEXES)
 
         return {
             "columns": columns,

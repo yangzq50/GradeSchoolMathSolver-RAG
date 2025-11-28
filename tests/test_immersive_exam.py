@@ -39,8 +39,8 @@ def test_immersive_exam_models():
 
     # Test ImmersiveExam
     questions = [
-        Question(equation="2+2", question_text="What is 2+2?", answer=4.0, difficulty="easy"),
-        Question(equation="5*3", question_text="What is 5*3?", answer=15.0, difficulty="medium")
+        Question(equation="2+2", question_text="What is 2+2?", answer=4, difficulty="easy"),
+        Question(equation="5*3", question_text="What is 5*3?", answer=15, difficulty="medium")
     ]
 
     exam = ImmersiveExam(

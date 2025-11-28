@@ -3,10 +3,21 @@ Quiz History Service
 Manages quiz history using centralized database service for RAG (Retrieval-Augmented Generation)
 
 This service provides:
-- Storage of question-answer pairs
+- Storage of question-answer pairs with vector embeddings
 - Similarity-based search for relevant historical questions
 - User history retrieval
 - Graceful degradation when database is unavailable
+
+Embedding Generation:
+All embedding generation and storage is handled by the database service.
+This service does NOT know or care about:
+- Which database backend is being used (MariaDB, Elasticsearch, etc.)
+- How embeddings are generated or stored
+- Source-to-embedding column mapping
+
+The database service determines everything from config.py:
+- EMBEDDING_SOURCE_COLUMNS: Which columns to use as embedding sources
+- EMBEDDING_COLUMN_NAMES: Names for embedding columns
 """
 from datetime import datetime
 from typing import List, Optional, Dict, Any
@@ -22,6 +33,11 @@ class QuizHistoryService:
     This service handles quiz history storage and retrieval for RAG functionality.
     It gracefully degrades to limited mode when database is unavailable.
 
+    Embedding Support:
+    All embedding operations are handled internally by the database service.
+    This service does NOT provide source texts or embedding configuration -
+    the database service determines everything from config.py.
+
     Attributes:
         config: Configuration object
         index_name: Name of the database index
@@ -36,60 +52,62 @@ class QuizHistoryService:
 
     def _create_index(self):
         """
-        Create database index with appropriate mappings
+        Create database index with appropriate mappings including embedding columns
 
-        Defines unified schema for efficient storage and retrieval of quiz history.
+        Uses the centralized database service to create the collection with
+        appropriate embedding support based on the backend.
         """
-        mapping = {
-            "mappings": {
-                "properties": {
-                    "username": {"type": "keyword"},
-                    "question": {"type": "text"},
-                    "equation": {"type": "text"},
-                    "user_equation": {"type": "text"},  # Alias for equation (backward compatibility)
-                    "user_answer": {"type": "integer"},
-                    "correct_answer": {"type": "integer"},
-                    "is_correct": {"type": "boolean"},
-                    "category": {"type": "keyword"},
-                    "timestamp": {"type": "date"},
-                    "reviewed": {"type": "boolean"}
-                }
-            }
-        }
-
-        self.db.create_collection(self.index_name, mapping)
+        # Use database service to create quiz history collection with embeddings
+        self.db.create_quiz_history_collection(self.index_name, include_embeddings=True)
 
     def add_history(self, history: QuizHistory) -> bool:
         """
-        Add a quiz history record to database
+        Add a quiz history record to database with vector embeddings
+
+        The database service handles all embedding generation and storage internally.
+        It determines source columns from EMBEDDING_SOURCE_COLUMNS config and
+        generates embeddings automatically.
 
         Args:
             history: QuizHistory object to store
 
         Returns:
             True if successful, False if database unavailable or error occurs
+
+        Raises:
+            RuntimeError: Propagated from database service if embedding generation fails
         """
         if not self.db.is_connected():
             return False
 
         try:
-            doc = {
+            # Build the document
+            # The database service will generate embeddings from source columns
+            # as configured in EMBEDDING_SOURCE_COLUMNS (e.g., 'question', 'equation')
+            doc: Dict[str, Any] = {
                 "username": history.username,
                 "question": history.question,
-                "equation": history.user_equation,  # Store as equation
-                "user_equation": history.user_equation,  # Keep for backward compatibility
+                "equation": history.user_equation,
+                "user_equation": history.user_equation,
                 "user_answer": history.user_answer,
                 "correct_answer": history.correct_answer,
                 "is_correct": history.is_correct,
                 "category": history.category,
                 "timestamp": history.timestamp.isoformat(),
-                "reviewed": False  # Default value for new records
+                "reviewed": False
             }
 
+            # Database service handles all embedding generation internally
+            # No record_id or source_texts parameters needed - database decides everything
             doc_id = self.db.insert_record(self.index_name, doc)
+
             return doc_id is not None
+        except RuntimeError as e:
+            # Embedding generation or insertion failed - propagate with error logging
+            print(f"ERROR: Failed to add history: {e}")
+            raise
         except Exception as e:
-            print(f"Error adding history: {e}")
+            print(f"ERROR: Failed to add history: {e}")
             return False
 
     def search_relevant_history(self, username: str, question: str,
@@ -150,24 +168,27 @@ class QuizHistoryService:
                 limit=top_k
             )
 
-            results = []
-            for hit in hits:
-                source = hit['_source']
-                results.append({
-                    'question': source.get('question'),
-                    'user_equation': source.get('user_equation'),
-                    'user_answer': source.get('user_answer'),
-                    'correct_answer': source.get('correct_answer'),
-                    'is_correct': source.get('is_correct'),
-                    'category': source.get('category'),
-                    'timestamp': source.get('timestamp'),
-                    'score': hit.get('_score', 0)
-                })
-
-            return results
+            return self._format_search_results(hits)
         except Exception as e:
             print(f"Error searching history: {e}")
             return []
+
+    def _format_search_results(self, hits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Format search hits into result dictionaries."""
+        results = []
+        for hit in hits:
+            source = hit['_source']
+            results.append({
+                'question': source.get('question'),
+                'user_equation': source.get('user_equation'),
+                'user_answer': source.get('user_answer'),
+                'correct_answer': source.get('correct_answer'),
+                'is_correct': source.get('is_correct'),
+                'category': source.get('category'),
+                'timestamp': source.get('timestamp'),
+                'score': hit.get('_score', 0)
+            })
+        return results
 
     def get_user_history(self, username: str, limit: int = 100) -> List[Dict[str, Any]]:
         """

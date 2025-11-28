@@ -12,9 +12,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 @patch.dict(os.environ, {'DATABASE_BACKEND': 'elasticsearch'})
+@patch('gradeschoolmathsolver.services.database.service.get_embedding_service')
 @patch('gradeschoolmathsolver.services.database.elasticsearch_backend.Elasticsearch')
 @patch('gradeschoolmathsolver.model_access.requests.post')
-def test_full_exam_flow_with_mocked_external_services(mock_requests_post, mock_elasticsearch):  # noqa: C901
+def test_full_exam_flow_with_mocked_external_services(  # noqa: C901
+    mock_requests_post, mock_elasticsearch, mock_get_embedding
+):
     """
     End-to-end smoke test: Generate questions, take exam, process results
     with Database and AI Model service mocked
@@ -23,11 +26,16 @@ def test_full_exam_flow_with_mocked_external_services(mock_requests_post, mock_e
     import importlib
     import gradeschoolmathsolver.config as config_module
     importlib.reload(config_module)
-    
+
     # Reset database service to pick up elasticsearch backend
     from gradeschoolmathsolver.services.database.service import set_database_service
     set_database_service(None)
-    
+
+    # Mock the embedding service to return proper embeddings
+    mock_embedding_service = MagicMock()
+    mock_embedding_service.generate_embedding.return_value = [0.1] * 768  # Return 768-dim vector
+    mock_get_embedding.return_value = mock_embedding_service
+
     from gradeschoolmathsolver.services.exam import ExamService
     from gradeschoolmathsolver.models import ExamRequest
     from elasticsearch import NotFoundError
@@ -49,10 +57,13 @@ def test_full_exam_flow_with_mocked_external_services(mock_requests_post, mock_e
     mock_es_instance.create.side_effect = mock_create
 
     # Mock get to raise NotFoundError for non-existent users, return user if created
-    def mock_get(index, id, **kwargs):
+    def mock_get(index: str, id: str, **kwargs) -> dict:  # type: ignore[type-arg]
         if index == "users":
             if id not in created_users:
-                raise NotFoundError("User not found", {"error": "not_found"}, {})
+                # Create a mock NotFoundError - avoid type issues with ApiResponseMeta
+                error = NotFoundError.__new__(NotFoundError)
+                error.args = ("User not found",)
+                raise error
             return {"_source": {"username": id, "created_at": "2025-01-01T00:00:00"}}
         return {"_source": {"username": id}}
 
@@ -177,11 +188,11 @@ def test_exam_flow_without_ai_model(mock_elasticsearch):
     import importlib
     import gradeschoolmathsolver.config as config_module
     importlib.reload(config_module)
-    
+
     # Reset database service to pick up elasticsearch backend
     from gradeschoolmathsolver.services.database.service import set_database_service
     set_database_service(None)
-    
+
     from gradeschoolmathsolver.services.exam import ExamService
     from gradeschoolmathsolver.models import ExamRequest
 
@@ -228,11 +239,11 @@ def test_exam_flow_without_elasticsearch(mock_elasticsearch):
     import importlib
     import gradeschoolmathsolver.config as config_module
     importlib.reload(config_module)
-    
+
     # Reset database service to pick up elasticsearch backend
     from gradeschoolmathsolver.services.database.service import set_database_service
     set_database_service(None)
-    
+
     from gradeschoolmathsolver.services.exam import ExamService
     from gradeschoolmathsolver.models import ExamRequest
 
@@ -273,11 +284,11 @@ def test_classification_integration(mock_requests_post, mock_elasticsearch):
     import importlib
     import gradeschoolmathsolver.config as config_module
     importlib.reload(config_module)
-    
+
     # Reset database service to pick up elasticsearch backend
     from gradeschoolmathsolver.services.database.service import set_database_service
     set_database_service(None)
-    
+
     from gradeschoolmathsolver.services.exam import ExamService
     from gradeschoolmathsolver.models import ExamRequest
 

@@ -96,9 +96,9 @@ class AgentService:
                     "content": prompt
                 }
             ]
-            
+
             response_text = model_access.generate_text_completion(messages, timeout=30)
-            
+
             if response_text:
                 # Parse answer and reasoning
                 answer, reasoning = self._parse_response(response_text)

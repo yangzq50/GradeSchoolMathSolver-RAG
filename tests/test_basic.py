@@ -108,7 +108,7 @@ def test_models():
     q = Question(
         equation="2 + 2",
         question_text="What is 2 + 2?",
-        answer=4.0,
+        answer=4,
         difficulty="easy"
     )
     assert q.equation == "2 + 2"

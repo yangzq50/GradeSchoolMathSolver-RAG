@@ -103,7 +103,7 @@ giving them the answer."""
                     "content": prompt
                 }
             ]
-            
+
             content = model_access.generate_text_completion(messages, timeout=30)
             return str(content) if content else None
 

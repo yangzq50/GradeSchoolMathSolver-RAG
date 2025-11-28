@@ -159,6 +159,86 @@ def generate_embedding(
     return None
 
 
+def _filter_valid_texts(texts: List[str]) -> tuple:
+    """
+    Filter valid texts and create index mapping.
+
+    Args:
+        texts: List of text strings
+
+    Returns:
+        Tuple of (valid_indices, valid_texts)
+    """
+    valid_indices = []
+    valid_texts = []
+    for i, text in enumerate(texts):
+        if text and isinstance(text, str):
+            valid_indices.append(i)
+            valid_texts.append(text)
+    return valid_indices, valid_texts
+
+
+def _make_embedding_request(config: Config, valid_texts: List[str], timeout: int) -> Optional[List[List[float]]]:
+    """
+    Make a single embedding API request.
+
+    Args:
+        config: Config object with service URLs
+        valid_texts: List of valid text strings to embed
+        timeout: Request timeout in seconds
+
+    Returns:
+        List of embeddings if successful, None otherwise
+    """
+    response = requests.post(
+        config.EMBEDDING_SERVICE_URL,
+        json={
+            "model": config.EMBEDDING_MODEL_NAME,
+            "input": valid_texts
+        },
+        timeout=timeout
+    )
+
+    if response.status_code != HTTP_OK:
+        logger.warning(f"Embedding request failed with status {response.status_code}: {response.text}")
+        return None
+
+    result = response.json()
+    data = result.get('data', [])
+    if not data:
+        return None
+
+    embeddings = [item.get('embedding', []) for item in data]
+    if embeddings and all(len(e) > 0 for e in embeddings):
+        return embeddings
+    return None
+
+
+def _build_output_with_embeddings(
+    texts_len: int,
+    valid_indices: List[int],
+    embeddings_result: Optional[List[List[float]]]
+) -> List[Optional[List[float]]]:
+    """
+    Build output list with embeddings mapped to original positions.
+
+    Args:
+        texts_len: Length of original texts list
+        valid_indices: Indices of valid texts in original list
+        embeddings_result: List of embeddings (or None if failed)
+
+    Returns:
+        Output list with embeddings at correct positions, None elsewhere
+    """
+    output: List[Optional[List[float]]] = [None] * texts_len
+
+    if embeddings_result:
+        for valid_idx, embedding in zip(valid_indices, embeddings_result):
+            output[valid_idx] = embedding
+
+    return output
+
+
 def generate_embeddings_batch(
     texts: List[str],
     max_retries: int = 3,
@@ -197,13 +277,7 @@ def generate_embeddings_batch(
         logger.warning("Invalid input: texts must be a non-empty list")
         return []
 
-    # Create index mapping and filter valid texts
-    valid_indices = []
-    valid_texts = []
-    for i, text in enumerate(texts):
-        if text and isinstance(text, str):
-            valid_indices.append(i)
-            valid_texts.append(text)
+    valid_indices, valid_texts = _filter_valid_texts(texts)
 
     if not valid_texts:
         logger.warning("No valid texts to embed")
@@ -213,49 +287,21 @@ def generate_embeddings_batch(
     embeddings_result = None
     for attempt in range(max_retries):
         try:
-            response = requests.post(
-                config.EMBEDDING_SERVICE_URL,
-                json={
-                    "model": config.EMBEDDING_MODEL_NAME,
-                    "input": valid_texts
-                },
-                timeout=timeout
-            )
-
-            if response.status_code == HTTP_OK:
-                result = response.json()
-                data = result.get('data', [])
-                if data:
-                    embeddings = [item.get('embedding', []) for item in data]
-                    # Verify all embeddings are valid
-                    if embeddings and all(len(e) > 0 for e in embeddings):
-                        embeddings_result = embeddings
-                        break
-            else:
-                logger.warning(
-                    f"Embedding request failed with status {response.status_code}: {response.text}"
-                )
-
+            embeddings_result = _make_embedding_request(config, valid_texts, timeout)
+            if embeddings_result:
+                break
         except (Timeout, RequestException) as e:
             logger.warning(f"Embedding attempt {attempt + 1}/{max_retries} failed: {e}")
-
         except Exception as e:
             logger.error(f"Unexpected error in embedding generation: {e}")
 
         if attempt < max_retries - 1:
             logger.info(f"Retrying embedding generation ({attempt + 1}/{max_retries})...")
 
-    # Create output list matching input size, with None for invalid/empty texts
-    output: List[Optional[List[float]]] = [None] * len(texts)
-
-    if embeddings_result:
-        # Map valid embeddings back to their original positions
-        for valid_idx, embedding in zip(valid_indices, embeddings_result):
-            output[valid_idx] = embedding
-    else:
+    if not embeddings_result:
         logger.warning(f"Failed to generate batch embeddings after {max_retries} attempts")
 
-    return output
+    return _build_output_with_embeddings(len(texts), valid_indices, embeddings_result)
 
 
 def is_embedding_service_available() -> bool:

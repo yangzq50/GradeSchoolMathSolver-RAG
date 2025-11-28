@@ -147,13 +147,13 @@ class QAGenerationService:
                 "content": prompt
             }
         ]
-        
+
         result = model_access.generate_text_completion(
             messages,
             max_retries=1,  # Single attempt per call, outer loop handles retries
             timeout=self.timeout
         )
-        
+
         return result if result else ""
 
     def generate_question_text(self, equation: str, answer: int) -> str:

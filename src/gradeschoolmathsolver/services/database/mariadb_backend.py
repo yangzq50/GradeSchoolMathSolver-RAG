@@ -5,16 +5,18 @@ Implementation of DatabaseService interface using MariaDB 11.8 LTS.
 Uses MySQL Connector/Python for database access (MariaDB is MySQL-compatible).
 
 This backend creates proper relational tables with typed columns
-based on schema definitions, providing better performance and
-type safety compared to generic JSON storage.
+based on schema definitions. All columns use proper SQL types - no JSON storage.
+
+Embedding Storage:
+For MariaDB, embeddings are stored in separate tables (one per embedding column)
+because MariaDB doesn't support multiple VECTOR indexes on the same table.
 """
 from typing import List, Optional, Dict, Any
-import json
 import time
 import mysql.connector
 from mysql.connector import Error as MySQLError
 from gradeschoolmathsolver.config import Config
-from .service import DatabaseService
+from .service import DatabaseService, generate_embedding
 
 
 class MariaDBDatabaseService(DatabaseService):
@@ -132,7 +134,7 @@ class MariaDBDatabaseService(DatabaseService):
 
         Args:
             collection_name: Name of the table to create
-            schema: Schema definition with columns and indexes
+            schema: Schema definition with 'columns' and optionally 'indexes' keys
 
         Returns:
             bool: True if successful, False otherwise
@@ -149,34 +151,27 @@ class MariaDBDatabaseService(DatabaseService):
                 cursor.close()
                 return True  # Table already exists
 
-            # Extract schema information
-            # For MariaDB, schema should have 'columns' and 'indexes' keys
-            if 'columns' in schema:
-                # Use explicit column definitions
-                columns_def = schema['columns']
-                columns_sql = ', '.join([f"`{col}` {typedef}" for col, typedef in columns_def.items()])
+            # Schema must have 'columns' defined - no fallback to JSON storage
+            if 'columns' not in schema:
+                print(f"ERROR: Schema for table '{collection_name}' must define 'columns'. "
+                      "JSON-based storage is not supported.")
+                cursor.close()
+                return False
 
-                # Add indexes if specified
-                indexes_sql = ""
-                if 'indexes' in schema and schema['indexes']:
-                    indexes_sql = ", " + ", ".join(schema['indexes'])
+            # Use explicit column definitions
+            columns_def = schema['columns']
+            columns_sql = ', '.join([f"`{col}` {typedef}" for col, typedef in columns_def.items()])
 
-                create_table_query = f"""
-                CREATE TABLE `{collection_name}` (
-                    {columns_sql}{indexes_sql}
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-                """
-            else:
-                # Fallback to generic JSON schema (for backward compatibility)
-                create_table_query = f"""
-                CREATE TABLE `{collection_name}` (
-                    id VARCHAR(255) PRIMARY KEY,
-                    data JSON NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    INDEX idx_created (created_at)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-                """
+            # Add indexes if specified
+            indexes_sql = ""
+            if 'indexes' in schema and schema['indexes']:
+                indexes_sql = ", " + ", ".join(schema['indexes'])
+
+            create_table_query = f"""
+            CREATE TABLE `{collection_name}` (
+                {columns_sql}{indexes_sql}
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
 
             cursor.execute(create_table_query)
             cursor.close()
@@ -227,32 +222,19 @@ class MariaDBDatabaseService(DatabaseService):
         try:
             cursor = self.connection.cursor()
 
-            # Check if table uses explicit columns or JSON storage
-            cursor.execute(f"DESCRIBE `{collection_name}`")
-            columns = {row[0] for row in cursor.fetchall()}
-
-            if 'data' in columns:
-                # JSON-based storage
-                insert_query = f"""
-                INSERT INTO `{collection_name}` (id, data)
-                VALUES (%s, %s)
-                """
-                cursor.execute(insert_query, (record_id, json.dumps(record)))
+            # Determine primary key column
+            if collection_name == 'users':
+                pk_col = 'username'
+                record_with_id = record.copy()
             else:
-                # Column-based storage
-                # Determine primary key column
-                if collection_name == 'users':
-                    pk_col = 'username'
-                    record_with_id = record.copy()
-                else:
-                    pk_col = 'record_id'
-                    record_with_id = record.copy()
-                    record_with_id[pk_col] = record_id
+                pk_col = 'record_id'
+                record_with_id = record.copy()
+                record_with_id[pk_col] = record_id
 
-                cols = ', '.join([f"`{k}`" for k in record_with_id.keys()])
-                placeholders = ', '.join(['%s' for _ in record_with_id])
-                insert_query = f"INSERT INTO `{collection_name}` ({cols}) VALUES ({placeholders})"
-                cursor.execute(insert_query, tuple(record_with_id.values()))
+            cols = ', '.join([f"`{k}`" for k in record_with_id.keys()])
+            placeholders = ', '.join(['%s' for _ in record_with_id])
+            insert_query = f"INSERT INTO `{collection_name}` ({cols}) VALUES ({placeholders})"
+            cursor.execute(insert_query, tuple(record_with_id.values()))
 
             cursor.close()
             return True
@@ -261,68 +243,138 @@ class MariaDBDatabaseService(DatabaseService):
             # Duplicate entry error (errno 1062) or other MySQL errors
             if hasattr(e, 'errno') and e.errno == 1062:
                 return False
-            print(f"Error creating record: {e}")
+            print(f"ERROR: Failed to create record in {collection_name}: {e}")
             return False
 
     def insert_record(
-        self, collection_name: str, record: Dict[str, Any],
-        record_id: Optional[str] = None
+        self, collection_name: str, record: Dict[str, Any]
     ) -> Optional[str]:
         """
-        Insert a row (record) in MariaDB (create or update)
+        Insert a row (record) in MariaDB (create or update), with automatic embedding generation.
+
+        The database service handles all embedding operations internally:
+        - Generates a UUID for record_id automatically
+        - Reads EMBEDDING_SOURCE_COLUMNS from config to determine source text columns
+        - Generates embeddings from source columns in the record
+        - Stores embeddings in separate tables (one per embedding column)
 
         Args:
             collection_name: Name of the table
-            record: Record data
-            record_id: Optional record ID
+            record: Record data (must contain all source columns from config)
 
         Returns:
             str: Record ID if successful, None otherwise
+
+        Raises:
+            RuntimeError: If embedding generation or insertion fails
         """
         if not self.connection:
             return None
 
         try:
+            import uuid
             cursor = self.connection.cursor()
 
-            if record_id is None:
-                # Generate UUID for new record
-                import uuid
-                record_id = str(uuid.uuid4())
+            # Generate UUID for new record
+            record_id = str(uuid.uuid4())
 
-            # Check if table uses explicit columns or JSON storage
-            cursor.execute(f"DESCRIBE `{collection_name}`")
-            columns = {row[0] for row in cursor.fetchall()}
-
-            if 'data' in columns:
-                # JSON-based storage
-                replace_query = f"""
-                REPLACE INTO `{collection_name}` (id, data)
-                VALUES (%s, %s)
-                """
-                cursor.execute(replace_query, (record_id, json.dumps(record)))
+            # Determine primary key column
+            if collection_name == 'users':
+                pk_col = 'username'
+                record_with_id = record.copy()
             else:
-                # Column-based storage
-                # Determine primary key column
-                if collection_name == 'users':
-                    pk_col = 'username'
-                    record_with_id = record.copy()
-                else:
-                    pk_col = 'record_id'
-                    record_with_id = record.copy()
-                    record_with_id[pk_col] = record_id
+                pk_col = 'record_id'
+                record_with_id = record.copy()
+                record_with_id[pk_col] = record_id
 
-                cols = ', '.join([f"`{k}`" for k in record_with_id.keys()])
-                placeholders = ', '.join(['%s' for _ in record_with_id])
-                replace_query = f"REPLACE INTO `{collection_name}` ({cols}) VALUES ({placeholders})"
-                cursor.execute(replace_query, tuple(record_with_id.values()))
-
+            cols = ', '.join([f"`{k}`" for k in record_with_id.keys()])
+            placeholders = ', '.join(['%s' for _ in record_with_id])
+            replace_query = f"REPLACE INTO `{collection_name}` ({cols}) VALUES ({placeholders})"
+            cursor.execute(replace_query, tuple(record_with_id.values()))
             cursor.close()
+
+            # Generate and store embeddings from source columns in the record
+            # Read source columns from config - do NOT use any defaults
+            self._insert_embeddings_from_record(collection_name, record_id, record)
+
             return record_id
 
+        except RuntimeError:
+            # Re-raise RuntimeError from embedding operations
+            raise
         except MySQLError as e:
-            print(f"Error inserting record: {e}")
+            print(f"ERROR: Failed to insert record in {collection_name}: {e}")
             return None
+
+    def _insert_embeddings_from_record(
+        self, collection_name: str, record_id: str, record: Dict[str, Any]
+    ) -> None:
+        """
+        Generate embeddings from source columns in record and insert into separate tables.
+
+        Reads EMBEDDING_SOURCE_COLUMNS from config to determine which columns
+        in the record to use as embedding sources. Does NOT use any defaults.
+
+        Args:
+            collection_name: Name of the main table
+            record_id: Record ID to link embeddings to
+            record: The record containing source text columns
+
+        Raises:
+            RuntimeError: If embedding generation or insertion fails
+        """
+        from .schemas import get_embedding_source_mapping, get_embedding_table_name
+
+        # Get source-to-embedding column mapping from config (no defaults!)
+        source_to_embedding = get_embedding_source_mapping()
+
+        # Generate embeddings and insert into separate tables
+        for source_col, embedding_col in source_to_embedding.items():
+            # Get source text from record - MUST exist, no defaults
+            if source_col not in record:
+                error_msg = (
+                    f"Cannot generate embedding for column '{embedding_col}': "
+                    f"source column '{source_col}' not found in record. "
+                    f"Record must contain all columns defined in EMBEDDING_SOURCE_COLUMNS config."
+                )
+                print(f"ERROR: {error_msg}")
+                raise RuntimeError(error_msg)
+
+            source_text = record[source_col]
+            if not source_text:
+                error_msg = (
+                    f"Cannot generate embedding for column '{embedding_col}': "
+                    f"source column '{source_col}' is empty. "
+                    f"All source columns must have non-empty values."
+                )
+                print(f"ERROR: {error_msg}")
+                raise RuntimeError(error_msg)
+
+            # Generate embedding using centralized function - MUST succeed
+            try:
+                embedding = generate_embedding(source_text)
+            except RuntimeError as e:
+                print(f"ERROR: {e}")
+                raise
+
+            # Get the embedding table name
+            embedding_table = get_embedding_table_name(collection_name, embedding_col)
+
+            # Insert embedding into separate table - MUST succeed
+            if self.connection is None:
+                raise RuntimeError("Database connection is not available")
+            try:
+                cursor = self.connection.cursor()
+                cols = "`record_id`, `embedding`"
+                replace_query = f"REPLACE INTO `{embedding_table}` ({cols}) VALUES (%s, VEC_FromText(%s))"
+                # Convert embedding list to MariaDB VECTOR format
+                embedding_str = str(embedding)
+                cursor.execute(replace_query, (record_id, embedding_str))
+                cursor.close()
+            except MySQLError as e:
+                error_msg = f"Failed to insert embedding into {embedding_table}: {e}"
+                print(f"ERROR: {error_msg}")
+                raise RuntimeError(error_msg) from e
 
     def get_record(self, collection_name: str, record_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -341,52 +393,72 @@ class MariaDBDatabaseService(DatabaseService):
         try:
             cursor = self.connection.cursor()
 
-            # Check if table uses explicit columns or JSON storage
-            cursor.execute(f"DESCRIBE `{collection_name}`")
-            columns = {row[0] for row in cursor.fetchall()}
-
-            if 'data' in columns:
-                # JSON-based storage
-                select_query = f"SELECT data FROM `{collection_name}` WHERE id = %s"
-                cursor.execute(select_query, (record_id,))
-                row = cursor.fetchone()
-                cursor.close()
-
-                if row and row[0]:
-                    result: Dict[str, Any] = json.loads(row[0])
-                    return result
-                return None
+            # Determine primary key column
+            if collection_name == 'users':
+                pk_col = 'username'
             else:
-                # Column-based storage
-                # Determine primary key column
-                if collection_name == 'users':
-                    pk_col = 'username'
-                else:
-                    pk_col = 'record_id'
+                pk_col = 'record_id'
 
-                select_query = f"SELECT * FROM `{collection_name}` WHERE `{pk_col}` = %s"
-                cursor.execute(select_query, (record_id,))
+            select_query = f"SELECT * FROM `{collection_name}` WHERE `{pk_col}` = %s"
+            cursor.execute(select_query, (record_id,))
 
-                # Get column names
-                column_names = [desc[0] for desc in cursor.description]
-                row = cursor.fetchone()
-                cursor.close()
+            # Get column names
+            column_names = [desc[0] for desc in cursor.description]
+            row = cursor.fetchone()
+            cursor.close()
 
-                if row:
-                    # Convert to dict, excluding the primary key from the result
-                    result = {}
-                    for idx, col_name in enumerate(column_names):
-                        if col_name == pk_col and col_name == 'record_id':
-                            continue  # Skip record_id in result
-                        result[col_name] = row[idx]
-                    return result
-                return None
-
-        except MySQLError as e:
-            print(f"Error getting record: {e}")
+            if row:
+                # Convert to dict, excluding the primary key from the result
+                result: Dict[str, Any] = {}
+                for idx, col_name in enumerate(column_names):
+                    if col_name == pk_col and col_name == 'record_id':
+                        continue  # Skip record_id in result
+                    result[col_name] = row[idx]
+                return result
             return None
 
-    def search_records(  # noqa: C901
+        except MySQLError as e:
+            print(f"ERROR: Failed to get record from {collection_name}: {e}")
+            return None
+
+    def _build_where_clause(self, filters: Optional[Dict[str, Any]]) -> tuple[str, List[Any]]:
+        """Build WHERE clause from filters."""
+        if not filters:
+            return "", []
+        where_clauses: List[str] = []
+        params: List[Any] = []
+        for field, value in filters.items():
+            where_clauses.append(f"`{field}` = %s")
+            params.append(value)
+        return f"WHERE {' AND '.join(where_clauses)}", params
+
+    def _build_order_clause(self, sort: Optional[List[Dict[str, Any]]]) -> str:
+        """Build ORDER BY clause from sort specifications."""
+        if not sort:
+            return ""
+        sort_parts = []
+        for sort_spec in sort:
+            for field, order in sort_spec.items():
+                direction = "DESC" if order == "desc" else "ASC"
+                sort_parts.append(f"`{field}` {direction}")
+        return f"ORDER BY {', '.join(sort_parts)}" if sort_parts else ""
+
+    def _convert_row_to_record(
+        self, row: tuple, column_names: List[str], pk_col: str
+    ) -> Dict[str, Any]:
+        """Convert a database row to a record dict with _id and _source."""
+        record: Dict[str, Any] = {}
+        record_id = None
+        for idx, col_name in enumerate(column_names):
+            if col_name == pk_col:
+                record_id = row[idx]
+                if pk_col == 'username':
+                    record[col_name] = row[idx]
+            else:
+                record[col_name] = row[idx]
+        return {'_id': record_id, '_source': record}
+
+    def search_records(
         self,
         collection_name: str,
         query: Optional[Dict[str, Any]] = None,
@@ -414,119 +486,27 @@ class MariaDBDatabaseService(DatabaseService):
 
         try:
             cursor = self.connection.cursor()
+            where_sql, params = self._build_where_clause(filters)
+            order_sql = self._build_order_clause(sort)
 
-            # Check if table uses explicit columns or JSON storage
-            cursor.execute(f"DESCRIBE `{collection_name}`")
-            columns_info = cursor.fetchall()
-            columns = {row[0] for row in columns_info}
+            select_query = f"""
+            SELECT * FROM `{collection_name}`
+            {where_sql}
+            {order_sql}
+            LIMIT %s OFFSET %s
+            """
+            params.extend([limit, offset])
 
-            if 'data' in columns:
-                # JSON-based storage
-                where_clauses = []
-                params: List[Any] = []
+            cursor.execute(select_query, params)
+            column_names = [desc[0] for desc in cursor.description]
+            rows = cursor.fetchall()
+            cursor.close()
 
-                if filters:
-                    for field, value in filters.items():
-                        where_clauses.append(f"JSON_EXTRACT(data, '$.{field}') = %s")
-                        params.append(json.dumps(value) if not isinstance(value, str) else value)
-
-                where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
-
-                order_sql = ""
-                if sort:
-                    sort_parts = []
-                    for sort_spec in sort:
-                        for field, order in sort_spec.items():
-                            direction = "DESC" if order == "desc" else "ASC"
-                            sort_parts.append(f"JSON_EXTRACT(data, '$.{field}') {direction}")
-                    if sort_parts:
-                        order_sql = f"ORDER BY {', '.join(sort_parts)}"
-
-                select_query = f"""
-                SELECT id, data FROM `{collection_name}`
-                {where_sql}
-                {order_sql}
-                LIMIT %s OFFSET %s
-                """
-                params.extend([limit, offset])
-
-                cursor.execute(select_query, params)
-                rows = cursor.fetchall()
-                cursor.close()
-
-                results = []
-                for row in rows:
-                    results.append({
-                        '_id': row[0],
-                        '_source': json.loads(row[1])
-                    })
-
-                return results
-            else:
-                # Column-based storage
-                where_clauses = []
-                params = []
-
-                if filters:
-                    for field, value in filters.items():
-                        where_clauses.append(f"`{field}` = %s")
-                        params.append(value)
-
-                where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
-
-                order_sql = ""
-                if sort:
-                    sort_parts = []
-                    for sort_spec in sort:
-                        for field, order in sort_spec.items():
-                            direction = "DESC" if order == "desc" else "ASC"
-                            sort_parts.append(f"`{field}` {direction}")
-                    if sort_parts:
-                        order_sql = f"ORDER BY {', '.join(sort_parts)}"
-
-                select_query = f"""
-                SELECT * FROM `{collection_name}`
-                {where_sql}
-                {order_sql}
-                LIMIT %s OFFSET %s
-                """
-                params.extend([limit, offset])
-
-                cursor.execute(select_query, params)
-
-                # Get column names
-                column_names = [desc[0] for desc in cursor.description]
-                rows = cursor.fetchall()
-                cursor.close()
-
-                # Determine primary key column
-                if collection_name == 'users':
-                    pk_col = 'username'
-                else:
-                    pk_col = 'record_id'
-
-                results = []
-                for row in rows:
-                    record = {}
-                    record_id = None
-                    for idx, col_name in enumerate(column_names):
-                        if col_name == pk_col:
-                            record_id = row[idx]
-                            if pk_col == 'username':
-                                # Include username in the record
-                                record[col_name] = row[idx]
-                        else:
-                            record[col_name] = row[idx]
-
-                    results.append({
-                        '_id': record_id,
-                        '_source': record
-                    })
-
-                return results
+            pk_col = 'username' if collection_name == 'users' else 'record_id'
+            return [self._convert_row_to_record(row, column_names, pk_col) for row in rows]
 
         except MySQLError as e:
-            print(f"Error searching records: {e}")
+            print(f"ERROR: Failed to search records in {collection_name}: {e}")
             return []
 
     def update_record(self, collection_name: str, record_id: str, partial_record: Dict[str, Any]) -> bool:
@@ -547,61 +527,37 @@ class MariaDBDatabaseService(DatabaseService):
         try:
             cursor = self.connection.cursor()
 
-            # Check if table uses explicit columns or JSON storage
-            cursor.execute(f"DESCRIBE `{collection_name}`")
-            columns = {row[0] for row in cursor.fetchall()}
-
-            if 'data' in columns:
-                # JSON-based storage
-                # Get existing record
-                existing = self.get_record(collection_name, record_id)
-                if existing is None:
-                    cursor.close()
-                    return False
-
-                # Merge with partial update
-                existing.update(partial_record)
-
-                # Update the record
-                update_query = f"""
-                UPDATE `{collection_name}`
-                SET data = %s
-                WHERE id = %s
-                """
-                cursor.execute(update_query, (json.dumps(existing), record_id))
+            # Determine primary key column
+            if collection_name == 'users':
+                pk_col = 'username'
             else:
-                # Column-based storage
-                # Determine primary key column
-                if collection_name == 'users':
-                    pk_col = 'username'
-                else:
-                    pk_col = 'record_id'
+                pk_col = 'record_id'
 
-                # Build UPDATE SET clause
-                set_clauses = []
-                params = []
-                for field, value in partial_record.items():
-                    if field != pk_col:  # Don't update primary key
-                        set_clauses.append(f"`{field}` = %s")
-                        params.append(value)
+            # Build UPDATE SET clause
+            set_clauses = []
+            params: List[Any] = []
+            for field, value in partial_record.items():
+                if field != pk_col:  # Don't update primary key
+                    set_clauses.append(f"`{field}` = %s")
+                    params.append(value)
 
-                if not set_clauses:
-                    cursor.close()
-                    return True  # Nothing to update
+            if not set_clauses:
+                cursor.close()
+                return True  # Nothing to update
 
-                params.append(record_id)
-                update_query = f"""
-                UPDATE `{collection_name}`
-                SET {', '.join(set_clauses)}
-                WHERE `{pk_col}` = %s
-                """
-                cursor.execute(update_query, params)
+            params.append(record_id)
+            update_query = f"""
+            UPDATE `{collection_name}`
+            SET {', '.join(set_clauses)}
+            WHERE `{pk_col}` = %s
+            """
+            cursor.execute(update_query, params)
 
             cursor.close()
             return True
 
         except MySQLError as e:
-            print(f"Error updating record: {e}")
+            print(f"ERROR: Failed to update record in {collection_name}: {e}")
             return False
 
     def delete_record(self, collection_name: str, record_id: str) -> bool:
@@ -621,21 +577,12 @@ class MariaDBDatabaseService(DatabaseService):
         try:
             cursor = self.connection.cursor()
 
-            # Check if table uses explicit columns or JSON storage
-            cursor.execute(f"DESCRIBE `{collection_name}`")
-            columns = {row[0] for row in cursor.fetchall()}
-
-            if 'data' in columns:
-                # JSON-based storage
-                delete_query = f"DELETE FROM `{collection_name}` WHERE id = %s"
+            # Determine primary key column
+            if collection_name == 'users':
+                pk_col = 'username'
             else:
-                # Column-based storage
-                # Determine primary key column
-                if collection_name == 'users':
-                    pk_col = 'username'
-                else:
-                    pk_col = 'record_id'
-                delete_query = f"DELETE FROM `{collection_name}` WHERE `{pk_col}` = %s"
+                pk_col = 'record_id'
+            delete_query = f"DELETE FROM `{collection_name}` WHERE `{pk_col}` = %s"
 
             cursor.execute(delete_query, (record_id,))
             affected = cursor.rowcount
@@ -643,10 +590,10 @@ class MariaDBDatabaseService(DatabaseService):
             return bool(affected > 0)
 
         except MySQLError as e:
-            print(f"Error deleting record: {e}")
+            print(f"ERROR: Failed to delete record from {collection_name}: {e}")
             return False
 
-    def count_records(  # noqa: C901
+    def count_records(
         self, collection_name: str, query: Optional[Dict[str, Any]] = None,
         filters: Optional[Dict[str, Any]] = None
     ) -> int:
@@ -655,7 +602,7 @@ class MariaDBDatabaseService(DatabaseService):
 
         Args:
             collection_name: Name of the table
-            query: Search query (ignored for MariaDB)
+            query: Search query (filters take precedence)
             filters: Simple filters (key-value pairs for WHERE clause)
 
         Returns:
@@ -667,45 +614,23 @@ class MariaDBDatabaseService(DatabaseService):
         try:
             cursor = self.connection.cursor()
 
-            # Check if table uses explicit columns or JSON storage
-            cursor.execute(f"DESCRIBE `{collection_name}`")
-            columns = {row[0] for row in cursor.fetchall()}
-
             where_sql = ""
-            params = []
+            params: List[Any] = []
 
-            # Use filters if provided (preferred for MariaDB)
+            # Use filters if provided (preferred)
             if filters:
-                # Column-based filtering
-                if 'data' not in columns:
-                    where_clauses = []
-                    for field, value in filters.items():
-                        where_clauses.append(f"`{field}` = %s")
-                        params.append(value)
-                    where_sql = f"WHERE {' AND '.join(where_clauses)}"
-                else:
-                    # JSON-based storage
-                    where_clauses = []
-                    for field, value in filters.items():
-                        where_clauses.append(f"JSON_EXTRACT(data, '$.{field}') = %s")
-                        params.append(json.dumps(value) if not isinstance(value, str) else value)
-                    where_sql = f"WHERE {' AND '.join(where_clauses)}"
+                where_clauses = []
+                for field, value in filters.items():
+                    where_clauses.append(f"`{field}` = %s")
+                    params.append(value)
+                where_sql = f"WHERE {' AND '.join(where_clauses)}"
             elif query:
                 # Fall back to query if no filters
-                if 'data' in columns:
-                    # JSON-based storage
-                    where_clauses = []
-                    for field, value in query.items():
-                        where_clauses.append(f"JSON_EXTRACT(data, '$.{field}') = %s")
-                        params.append(json.dumps(value) if not isinstance(value, str) else value)
-                    where_sql = f"WHERE {' AND '.join(where_clauses)}"
-                else:
-                    # Column-based storage
-                    where_clauses = []
-                    for field, value in query.items():
-                        where_clauses.append(f"`{field}` = %s")
-                        params.append(value)
-                    where_sql = f"WHERE {' AND '.join(where_clauses)}"
+                where_clauses = []
+                for field, value in query.items():
+                    where_clauses.append(f"`{field}` = %s")
+                    params.append(value)
+                where_sql = f"WHERE {' AND '.join(where_clauses)}"
 
             count_query = f"SELECT COUNT(*) as count FROM `{collection_name}` {where_sql}"
             cursor.execute(count_query, params)
@@ -715,5 +640,47 @@ class MariaDBDatabaseService(DatabaseService):
             return result[0] if result else 0
 
         except MySQLError as e:
-            print(f"Error counting records: {e}")
+            print(f"ERROR: Failed to count records in {collection_name}: {e}")
             return 0
+
+    def create_quiz_history_collection(
+        self, collection_name: str, include_embeddings: bool = True
+    ) -> bool:
+        """
+        Create the quiz history collection with embedding support for MariaDB.
+
+        For MariaDB, this creates:
+        1. The main quiz_history table
+        2. Separate embedding tables (one per embedding column) because
+           MariaDB doesn't support multiple VECTOR indexes on the same table.
+
+        Args:
+            collection_name: Name of the collection (e.g., 'quiz_history')
+            include_embeddings: Whether to include embedding columns (default: True)
+
+        Returns:
+            bool: True if all tables created successfully, False otherwise
+        """
+        from .schemas import (
+            get_answer_history_schema_for_backend,
+            get_embedding_config,
+            get_embedding_table_schemas_mariadb
+        )
+
+        # Create main table
+        schema = get_answer_history_schema_for_backend('mariadb', include_embeddings)
+        if not self.create_collection(collection_name, schema):
+            return False
+
+        # Create separate embedding tables
+        if include_embeddings:
+            embedding_config = get_embedding_config()
+            embedding_tables = get_embedding_table_schemas_mariadb(
+                collection_name,
+                embedding_config
+            )
+            for table_name, table_schema in embedding_tables.items():
+                if not self.create_collection(table_name, table_schema):
+                    print(f"Warning: Failed to create embedding table {table_name}")
+
+        return True

@@ -5,7 +5,7 @@ Generates vector embeddings using the EmbeddingGemma model via Docker Model Runn
 This service now wraps the centralized model_access module for consistency.
 All actual HTTP calls to the embedding model are handled by model_access.
 """
-from typing import List, Optional, Union
+from typing import List, Optional
 import logging
 from gradeschoolmathsolver.config import Config
 from gradeschoolmathsolver import model_access
