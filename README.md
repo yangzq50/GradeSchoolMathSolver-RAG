@@ -45,7 +45,7 @@ The system consists of 13 main components:
 - Foundation for RAG (Retrieval-Augmented Generation) capabilities
 - Enables semantic similarity search for questions
 - Docker Model Runner integration via OpenAI-compatible API
-- See [Embedding Service Documentation](docs/EMBEDDING_SERVICE.md)
+- See [AI Model Service Documentation](docs/AI_MODEL_SERVICE.md)
 
 ### 1. QA Generation Service
 - Generates mathematical equations based on difficulty level
@@ -63,7 +63,6 @@ The system consists of 13 main components:
 - Calculates overall correctness and recent 100 questions score
 - Tracks reviewed status for mistake review feature
 - See [Database Service Documentation](docs/DATABASE_SERVICE.md)
-- See [MariaDB Integration](docs/MARIADB_INTEGRATION.md)
 
 ### 4. Quiz History Service
 - Database storage for RAG capabilities (works with both MariaDB and Elasticsearch)
@@ -328,8 +327,7 @@ This will install the latest stable release with all dependencies.
 If you prefer to run everything locally without Docker:
 
 1. **Set up LLM service** - Use any OpenAI-compatible API endpoint (see [AI Model Service Documentation](docs/AI_MODEL_SERVICE.md))
-2. **Install and run MariaDB locally** (see [MariaDB Integration Documentation](docs/MARIADB_INTEGRATION.md))
-   - Or install Elasticsearch for RAG features (see [Elasticsearch Storage Documentation](docs/ELASTICSEARCH_STORAGE.md))
+2. **Install and run MariaDB locally** (see [Database Service Documentation](docs/DATABASE_SERVICE.md))
 3. **Update .env** with your LLM endpoint and database URLs
 4. **Install the package** with `pip install .`
 5. **Run the web application** with `gradeschoolmathsolver`
@@ -607,7 +605,7 @@ All model interactions are now centralized in the `model_access.py` module. This
 - Single point of maintenance for model API calls
 - Easier testing and mocking
 
-See [Model Access Documentation](docs/MODEL_ACCESS.md) for detailed configuration examples and API usage.
+See [AI Model Service Documentation](docs/AI_MODEL_SERVICE.md) for detailed configuration examples and API usage.
 
 ### Database Configuration
 
@@ -619,7 +617,6 @@ The system supports two database backends, both with full RAG (Retrieval-Augment
 - Lower resource usage
 - Easy setup with Docker
 - **Embedding support**: Supports vector embeddings for RAG via separate embedding tables
-- See [MariaDB Integration Documentation](docs/MARIADB_INTEGRATION.md)
 
 ```bash
 DATABASE_BACKEND=mariadb
@@ -636,7 +633,6 @@ MARIADB_DATABASE=math_solver
 - Semantic similarity matching out of the box
 - Best for large-scale RAG deployments
 - Requires more resources (8GB+ RAM recommended)
-- See [Elasticsearch Storage Documentation](docs/ELASTICSEARCH_STORAGE.md)
 
 ```bash
 DATABASE_BACKEND=elasticsearch
@@ -644,6 +640,8 @@ ELASTICSEARCH_HOST=localhost
 ELASTICSEARCH_PORT=9200
 ELASTICSEARCH_INDEX=quiz_history
 ```
+
+See [Database Service Documentation](docs/DATABASE_SERVICE.md) for detailed configuration.
 
 **Note**: Both backends support the embedding service for RAG functionality. MariaDB stores embeddings in separate tables with indexed vector columns, while Elasticsearch uses native `dense_vector` fields for efficient similarity search.
 
@@ -837,14 +835,13 @@ If you encounter import errors:
    docker logs math-solver-mariadb
    ```
 
-For detailed troubleshooting, see [MariaDB Integration Documentation](docs/MARIADB_INTEGRATION.md)
+For detailed troubleshooting, see [Database Service Documentation](docs/DATABASE_SERVICE.md)
 
 **Elasticsearch Issues** (if using Elasticsearch for RAG)
 
 1. Check if ES is running: `docker ps | grep elasticsearch`
 2. Test connection: `curl http://localhost:9200`
 3. The system will work in limited mode without ES (uses MariaDB)
-4. See [Elasticsearch Storage Documentation](docs/ELASTICSEARCH_STORAGE.md)
 
 ### Data Directory Issues
 
@@ -966,8 +963,7 @@ dependencies = [
 
 After updating dependencies, test locally with `pip install -e .` to install in development mode.
 
-Detailed instructions for setting up and customizing the release workflows:
-- [Release Workflow Documentation](docs/RELEASE_WORKFLOW.md) - Complete guide for GitHub releases and Docker Hub publishing
+For release workflow details, see [Contributing Guide](docs/CONTRIBUTING.md).
 
 ## 📝 License
 
