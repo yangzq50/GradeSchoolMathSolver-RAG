@@ -118,13 +118,19 @@ def test_non_blocking_get_database_service() -> None:
     # 2. Starts a background thread
     # 3. Returns a placeholder service
 
-    # Patch the MariaDB connection to avoid actual connection
-    with patch('gradeschoolmathsolver.services.database.mariadb_backend.mysql.connector.connect') as mock_connect:
-        mock_connection = Mock()
-        mock_connection.is_connected.return_value = False
-        mock_connect.side_effect = Exception("Connection refused")
+    # Use an event to block the background thread until we've verified status
+    connection_blocker = threading.Event()
 
-        # Also patch time.sleep to speed up the test
+    def blocking_connect_side_effect(*args: object, **kwargs: object) -> None:
+        # Wait for the test to signal it's done checking status
+        connection_blocker.wait(timeout=5)
+        raise ConnectionRefusedError("Connection refused")
+
+    # Patch the MariaDB connection to block until we've verified status
+    with patch('gradeschoolmathsolver.services.database.mariadb_backend.mysql.connector.connect') as mock_connect:
+        mock_connect.side_effect = blocking_connect_side_effect
+
+        # Also patch time.sleep to speed up the test after we unblock
         with patch('gradeschoolmathsolver.services.database.mariadb_backend.time.sleep'):
             # Call with blocking=False
             result = service.get_database_service(blocking=False)
@@ -135,6 +141,9 @@ def test_non_blocking_get_database_service() -> None:
             assert service._connection_thread is not None
             # The thread should have been started
             assert isinstance(service._connection_thread, threading.Thread)
+
+            # Now allow the background thread to proceed
+            connection_blocker.set()
 
             print("✅ Non-blocking get_database_service sets connecting status")
 

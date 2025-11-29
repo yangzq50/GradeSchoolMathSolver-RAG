@@ -83,7 +83,7 @@ jobs:
           
           ### Using pip
           \`\`\`bash
-          pip install gradeschoolmathsolver
+          pip install gradeschoolmathsolver==${{ steps.version.outputs.version }}
           \`\`\`
           
           For more information, see the [README](https://github.com/${{ github.repository }}/blob/${{ steps.version.outputs.tag }}/README.md).
