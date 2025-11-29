@@ -427,4 +427,7 @@ def set_database_service(service: DatabaseService) -> None:
     """
     global _db_service, _connection_status
     _db_service = service
-    _connection_status = "connected" if service.is_connected() else "failed"
+    if service is None:
+        _connection_status = "not_started"
+    else:
+        _connection_status = "connected" if service.is_connected() else "failed"

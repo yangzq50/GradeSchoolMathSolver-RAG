@@ -3,8 +3,9 @@ Web UI Service
 Flask-based web interface for the GradeSchoolMathSolver system
 """
 from typing import Any, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
-from flask import Flask, render_template, request, jsonify, Response
+from flask import Flask, render_template, request, jsonify, Response, redirect
 from flask_cors import CORS
+from werkzeug.wrappers import Response as WerkzeugResponse
 from gradeschoolmathsolver.config import Config
 from gradeschoolmathsolver.models import (
     ExamRequest, AgentConfig, ImmersiveExamConfig,
@@ -103,7 +104,7 @@ def get_mistake_review_service() -> 'MistakeReviewService':
 
 
 # Type alias for Flask response types
-FlaskResponse = Union[Response, str, Tuple[Response, int], Tuple[str, int]]
+FlaskResponse = Union[Response, WerkzeugResponse, str, Tuple[Response, int], Tuple[str, int]]
 
 
 # Start database connection in background on module load
@@ -112,11 +113,10 @@ get_database_service(blocking=False)
 
 # Database status routes
 @app.route('/db-status')
-def db_status_page() -> str:
+def db_status_page() -> FlaskResponse:
     """Database connection status page"""
     if is_database_ready():
         # Database is ready, redirect to home
-        from flask import redirect
         return redirect('/')
     return render_template('db_status.html')
 
