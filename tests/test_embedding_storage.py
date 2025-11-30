@@ -660,8 +660,8 @@ class TestMariaDBEmbeddingSchema:
         assert 'VECTOR INDEX idx_equation_embedding (equation_embedding)' not in indexes
 
 
-class TestBackwardsCompatibility:
-    """Test backwards compatibility with existing Q&A features"""
+class TestSchemaIntegrity:
+    """Test schema integrity for existing Q&A features"""
 
     def test_user_schema_unchanged(self) -> None:
         """Test that user schema is not affected by embedding changes"""

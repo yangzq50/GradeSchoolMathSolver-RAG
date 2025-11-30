@@ -41,11 +41,6 @@ GENERATION_MODEL_NAME=ai/llama3.2:1B-Q4_0
 # Embedding Service
 EMBEDDING_SERVICE_URL=http://localhost:12434/engines/llama.cpp/v1/embeddings
 EMBEDDING_MODEL_NAME=ai/embeddinggemma:300M-Q8_0
-
-# Legacy configuration (backward compatible)
-AI_MODEL_URL=http://localhost:12434
-AI_MODEL_NAME=ai/llama3.2:1B-Q4_0
-LLM_ENGINE=llama.cpp
 ```
 
 ## Using the Model Access Module

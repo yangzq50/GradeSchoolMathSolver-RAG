@@ -17,10 +17,13 @@ def test_config_default_values() -> None:
 
     config = Config()
 
-    # AI Model defaults
-    assert config.AI_MODEL_URL == 'http://localhost:12434'
-    assert config.AI_MODEL_NAME == 'ai/llama3.2:1B-Q4_0'
-    assert config.LLM_ENGINE == 'llama.cpp'
+    # AI Generation Service defaults
+    assert config.GENERATION_SERVICE_URL == 'http://localhost:12434/engines/llama.cpp/v1/chat/completions'
+    assert config.GENERATION_MODEL_NAME == 'ai/llama3.2:1B-Q4_0'
+
+    # Embedding Service defaults
+    assert config.EMBEDDING_SERVICE_URL == 'http://localhost:12434/engines/llama.cpp/v1/embeddings'
+    assert config.EMBEDDING_MODEL_NAME == 'ai/embeddinggemma:300M-Q8_0'
 
     # Database backend defaults
     assert config.DATABASE_BACKEND == 'mariadb'
@@ -63,7 +66,8 @@ def test_config_environment_variable_override() -> None:
     """Test that environment variables properly override defaults"""
     # Set environment variables
     env_vars = {
-        'AI_MODEL_URL': 'http://custom-host:8080',
+        'GENERATION_SERVICE_URL': 'http://custom-host:8080/v1/chat/completions',
+        'GENERATION_MODEL_NAME': 'custom-model',
         'DATABASE_BACKEND': 'elasticsearch',
         'DB_MAX_RETRIES': '20',
         'DB_RETRY_DELAY': '10.5',
@@ -83,7 +87,8 @@ def test_config_environment_variable_override() -> None:
         config = Config()
 
         # Verify overrides
-        assert config.AI_MODEL_URL == 'http://custom-host:8080'
+        assert config.GENERATION_SERVICE_URL == 'http://custom-host:8080/v1/chat/completions'
+        assert config.GENERATION_MODEL_NAME == 'custom-model'
         assert config.DATABASE_BACKEND == 'elasticsearch'
         assert config.DB_MAX_RETRIES == 20
         assert config.DB_RETRY_DELAY == 10.5

@@ -70,8 +70,8 @@ All services are configured via `.env`:
 
 ```bash
 # AI Model
-AI_MODEL_URL=http://localhost:12434
-AI_MODEL_NAME=ai/llama3.2:1B-Q4_0
+GENERATION_SERVICE_URL=http://localhost:12434/engines/llama.cpp/v1/chat/completions
+GENERATION_MODEL_NAME=ai/llama3.2:1B-Q4_0
 
 # Database
 DATABASE_BACKEND=mariadb
